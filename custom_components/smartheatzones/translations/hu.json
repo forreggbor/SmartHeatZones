@@ -1,43 +1,39 @@
 {
-  "title": "Okos Fűtési Zónák",
+  "title": "Smart Heat Zones",
   "config": {
     "step": {
       "user": {
-        "title": "Új fűtési zóna hozzáadása",
-        "description": "Hozz létre egy új fűtési zónát a SmartHeatZones integrációhoz.",
+        "title": "Új zóna hozzáadása",
+        "description": "Add meg az új fűtési zóna beállításait.",
         "data": {
-          "title": "Zóna neve"
+          "title": "Zóna neve",
+          "sensor_entity_id": "Hőmérő szenzor",
+          "relay_entities": "Zóna relék",
+          "door_sensors": "Ajtó / ablak érzékelők",
+          "boiler_main": "Kazán főkapcsoló",
+          "hysteresis": "Hiszterézis (°C)"
         }
       }
     },
+    "error": {
+      "unknown": "Ismeretlen hiba történt.",
+      "cannot_connect": "Nem sikerült kapcsolatot létesíteni."
+    },
     "abort": {
-      "already_configured": "Ez a zóna már konfigurálva van."
+      "single_instance_allowed": "Ez az integráció már konfigurálva van."
     }
   },
   "options": {
     "step": {
-      "zone": {
+      "init": {
         "title": "Zóna beállításai",
-        "description": "Válaszd ki a szenzorokat, reléket és az időalapú hőmérséklet programot ehhez a zónához.",
+        "description": "Módosítsd a fűtési paramétereket.",
         "data": {
-          "sensor_entity_id": "Hőmérséklet szenzor",
-          "boiler_main_relay": "Kazán főkapcsoló (minden zónára közös)",
-          "relay_entities": "Zóna relék (szivattyú vagy szelep)",
-          "door_sensors": "Ajtó/ablak szenzorok (opcionális)",
-          "hysteresis": "Hiszterézis (°C)",
-          "active_blocks": "Aktív napszakok száma",
-          "b1_start": "1. napszak kezdete",
-          "b1_end": "1. napszak vége",
-          "b1_temp": "1. napszak hőmérséklet",
-          "b2_start": "2. napszak kezdete",
-          "b2_end": "2. napszak vége",
-          "b2_temp": "2. napszak hőmérséklet",
-          "b3_start": "3. napszak kezdete",
-          "b3_end": "3. napszak vége",
-          "b3_temp": "3. napszak hőmérséklet",
-          "b4_start": "4. napszak kezdete",
-          "b4_end": "4. napszak vége",
-          "b4_temp": "4. napszak hőmérséklet"
+          "sensor_entity_id": "Hőmérő szenzor",
+          "relay_entities": "Relék (szivattyúk / szelepek)",
+          "door_sensors": "Ajtó- / ablakérzékelők",
+          "boiler_main": "Kazán főkapcsoló",
+          "hysteresis": "Hiszterézis (°C)"
         }
       }
     }

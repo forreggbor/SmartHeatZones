@@ -155,33 +155,11 @@ Hiszterézis és időzített átváltás védi a klímát a gyakori kapcsolások
 
 ---
 
-## 🧩 **Architektúra (frissített)**
-
-```
-custom_components/smartheatzones/ 
-├── __init__.py 
-├── manifest.json 
-├── config_flow.py 
-├── const.py 
-├── zone_manager.py 
-├── relay_controller.py 
-├── safety_engine.py 
-├── climate_bridge.py 
-├── translations/ 
-    ├── hu.json 
-    └── en.json 
-
-```
-
----
-
 ## 🧰 **Fejlesztési környezet**
 
 - **IDE:** JetBrains PyCharm / PHPStorm
 
 - **Version Control:**
-  
-  - Privát fejlesztés: *Gitea – gabor*
   
   - Publikus verzió: *GitHub – forreggbor/SmartHeatZones*
 
@@ -226,7 +204,6 @@ custom_components/smartheatzones/
 
 ---
 
-📄 **Fejlesztés tulajdonosa:** *forreggbor*  
-📂 **Privát fejlesztői repository:** *gabor @ Gitea*  
+📄 **Fejlesztés tulajdonosa:** *forreggbor*
 🌐 **Publikus GitHub repo:** *forreggbor/SmartHeatZones*  
-📘 **Dokumentáció formátum:** Markdown + PDF export
+📘 **Dokumentáció formátum:** Markdown

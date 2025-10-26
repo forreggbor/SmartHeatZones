@@ -14,6 +14,7 @@ from .const import (
     DATA_BOILER_MAIN,
     DATA_ACTIVE_ZONES,
     DATA_ENTRIES,
+    LOG_PREFIX,
 )
 from .boiler_manager import BoilerManager
 
@@ -24,60 +25,67 @@ _LOGGER = logging.getLogger(__name__)
 # -------------------------------------------------------------------
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Set up SmartHeatZones from a config entry."""
+    """Integráció inicializálása."""
     entry_id = entry.entry_id
-    _LOGGER.info("[SmartHeatZones] async_setup_entry called for %s", entry.title)
+    _LOGGER.info("%s async_setup_entry() called for %s", LOG_PREFIX, entry.title)
 
-    # Ensure data container exists
+    # Ha még nincs fő domain adatstruktúra, hozzuk létre
     hass.data.setdefault(DOMAIN, {})
 
-    # Central shared BoilerManager instance
+    # Közös BoilerManager példány létrehozása (egyetlen központi példány az egész integrációhoz)
     if DATA_BOILER_MAIN not in hass.data[DOMAIN]:
         hass.data[DOMAIN][DATA_BOILER_MAIN] = BoilerManager(hass)
-        _LOGGER.debug("[SmartHeatZones] BoilerManager instance created.")
+        _LOGGER.debug("%s BoilerManager instance created", LOG_PREFIX)
+    else:
+        _LOGGER.debug("%s Reusing existing BoilerManager instance", LOG_PREFIX)
 
-    # Track active zones
-    if DATA_ACTIVE_ZONES not in hass.data[DOMAIN]:
-        hass.data[DOMAIN][DATA_ACTIVE_ZONES] = set()
+    # Aktív zónák gyűjteménye
+    hass.data[DOMAIN].setdefault(DATA_ACTIVE_ZONES, set())
 
-    # Track entries for cleanup
-    if DATA_ENTRIES not in hass.data[DOMAIN]:
-        hass.data[DOMAIN][DATA_ENTRIES] = {}
-
+    # Entry-nyilvántartás
+    hass.data[DOMAIN].setdefault(DATA_ENTRIES, {})
     hass.data[DOMAIN][DATA_ENTRIES][entry_id] = entry
-    _LOGGER.debug("[SmartHeatZones] Registered entry: %s", entry.title)
+    _LOGGER.debug("%s Registered entry: %s", LOG_PREFIX, entry.title)
 
-    # Load climate platform
+    # Platformok betöltése (climate)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    _LOGGER.info("[SmartHeatZones] %s – climate platform initialized.", entry.title)
+    _LOGGER.info("%s %s – climate platform initialized", LOG_PREFIX, entry.title)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a SmartHeatZones config entry."""
-    _LOGGER.info("[SmartHeatZones] Unloading entry: %s", entry.title)
+    """Egy konfigurációs bejegyzés eltávolítása."""
+    _LOGGER.info("%s Unloading entry: %s", LOG_PREFIX, entry.title)
 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    # Cleanup data
+    # Adattisztítás
     entry_id = entry.entry_id
-    if DATA_ENTRIES in hass.data[DOMAIN]:
-        hass.data[DOMAIN][DATA_ENTRIES].pop(entry_id, None)
-    if DATA_ACTIVE_ZONES in hass.data[DOMAIN]:
-        zones = hass.data[DOMAIN][DATA_ACTIVE_ZONES]
-        zones = {z for z in zones if not z.startswith(entry.title)}
-        hass.data[DOMAIN][DATA_ACTIVE_ZONES] = zones
+    domain_data = hass.data.get(DOMAIN, {})
+    entries = domain_data.get(DATA_ENTRIES, {})
+    if entry_id in entries:
+        entries.pop(entry_id, None)
+        _LOGGER.debug("%s Removed entry from registry: %s", LOG_PREFIX, entry.title)
 
-    _LOGGER.info("[SmartHeatZones] %s – integration entry unloaded.", entry.title)
+    # Ha nincs több zóna, ürítjük a BoilerManager állapotát
+    active_zones = domain_data.get(DATA_ACTIVE_ZONES, set())
+    if not active_zones:
+        _LOGGER.debug("%s No active zones remain.", LOG_PREFIX)
+
+    _LOGGER.info("%s %s – integration entry unloaded", LOG_PREFIX, entry.title)
     return unload_ok
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Handle removal of a config entry."""
-    _LOGGER.info("[SmartHeatZones] Config entry removed: %s", entry.title)
+    """Integráció végleges eltávolítása (user delete)."""
+    _LOGGER.info("%s Config entry removed: %s", LOG_PREFIX, entry.title)
     try:
-        if DATA_ENTRIES in hass.data[DOMAIN]:
-            hass.data[DOMAIN][DATA_ENTRIES].pop(entry.entry_id, None)
+        domain_data = hass.data.get(DOMAIN, {})
+        if DATA_ENTRIES in domain_data:
+            domain_data[DATA_ENTRIES].pop(entry.entry_id, None)
+        if DATA_ACTIVE_ZONES in domain_data:
+            zones = domain_data[DATA_ACTIVE_ZONES]
+            domain_data[DATA_ACTIVE_ZONES] = {z for z in zones if not z.startswith(entry.title)}
     except Exception as e:
-        _LOGGER.warning("[SmartHeatZones] Cleanup warning: %s", e)
+        _LOGGER.warning("%s Cleanup warning: %s", LOG_PREFIX, e)
