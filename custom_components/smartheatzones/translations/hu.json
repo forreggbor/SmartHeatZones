@@ -27,14 +27,49 @@
     "step": {
       "init": {
         "title": "Zóna beállításai",
-        "description": "Módosítsd a fűtési paramétereket.",
+        "description": "Módosítsd a fűtési paramétereket és napszakos ütemezést.",
         "data": {
           "sensor_entity_id": "Hőmérő szenzor",
           "relay_entities": "Relék (szivattyúk / szelepek)",
           "door_sensors": "Ajtó- / ablakérzékelők",
           "boiler_main": "Kazán főkapcsoló",
-          "hysteresis": "Hiszterézis (°C)"
+          "hysteresis": "Hiszterézis (°C)",
+          "label_1": "1. napszak neve",
+          "start_1": "1. napszak kezdete",
+          "end_1": "1. napszak vége",
+          "temp_1": "1. napszak célhőmérséklet",
+          "label_2": "2. napszak neve",
+          "start_2": "2. napszak kezdete",
+          "end_2": "2. napszak vége",
+          "temp_2": "2. napszak célhőmérséklet",
+          "label_3": "3. napszak neve",
+          "start_3": "3. napszak kezdete",
+          "end_3": "3. napszak vége",
+          "temp_3": "3. napszak célhőmérséklet",
+          "label_4": "4. napszak neve",
+          "start_4": "4. napszak kezdete",
+          "end_4": "4. napszak vége",
+          "temp_4": "4. napszak célhőmérséklet"
+        },
+        "data_description": {
+          "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
+          "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
+          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
+          "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
+          "hysteresis": "Kapcsolási hiszterézis - megakadályozza a gyakori be-ki kapcsolást",
+          "label_1": "Példa: Éjszaka, Reggel, Nappal, Este",
+          "start_1": "Időszak kezdete (HH:MM)",
+          "end_1": "Időszak vége (HH:MM)",
+          "temp_1": "Célhőmérséklet ebben az időszakban (°C)"
         }
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "state": {
+        "off": "Kikapcsolva",
+        "heat": "Fűtés"
       }
     }
   }

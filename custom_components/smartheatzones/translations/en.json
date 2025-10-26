@@ -4,11 +4,11 @@
     "step": {
       "user": {
         "title": "Add new heating zone",
-        "description": "Define your zone setup parameters.",
+        "description": "Define your new heating zone settings.",
         "data": {
           "title": "Zone name",
           "sensor_entity_id": "Temperature sensor",
-          "relay_entities": "Zone relays (pump / valve)",
+          "relay_entities": "Zone relays",
           "door_sensors": "Door / window sensors",
           "boiler_main": "Main boiler switch",
           "hysteresis": "Hysteresis (°C)"
@@ -27,14 +27,49 @@
     "step": {
       "init": {
         "title": "Zone settings",
-        "description": "Adjust your zone parameters.",
+        "description": "Adjust your heating parameters and schedule.",
         "data": {
           "sensor_entity_id": "Temperature sensor",
-          "relay_entities": "Relays (pump / valve)",
+          "relay_entities": "Relays (pumps / valves)",
           "door_sensors": "Door / window sensors",
           "boiler_main": "Main boiler switch",
-          "hysteresis": "Hysteresis (°C)"
+          "hysteresis": "Hysteresis (°C)",
+          "label_1": "Period 1 name",
+          "start_1": "Period 1 start time",
+          "end_1": "Period 1 end time",
+          "temp_1": "Period 1 target temperature",
+          "label_2": "Period 2 name",
+          "start_2": "Period 2 start time",
+          "end_2": "Period 2 end time",
+          "temp_2": "Period 2 target temperature",
+          "label_3": "Period 3 name",
+          "start_3": "Period 3 start time",
+          "end_3": "Period 3 end time",
+          "temp_3": "Period 3 target temperature",
+          "label_4": "Period 4 name",
+          "start_4": "Period 4 start time",
+          "end_4": "Period 4 end time",
+          "temp_4": "Period 4 target temperature"
+        },
+        "data_description": {
+          "sensor_entity_id": "Temperature sensor entity for this zone",
+          "relay_entities": "Zone pump/valve relay switches (multiple selection allowed)",
+          "door_sensors": "Door/window sensors - pause heating when open (optional)",
+          "boiler_main": "Shared main boiler switch (must be the same for all zones)",
+          "hysteresis": "Switching hysteresis - prevents frequent on/off cycling",
+          "label_1": "Example: Night, Morning, Day, Evening",
+          "start_1": "Period start time (HH:MM)",
+          "end_1": "Period end time (HH:MM)",
+          "temp_1": "Target temperature during this period (°C)"
         }
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "state": {
+        "off": "Off",
+        "heat": "Heat"
       }
     }
   }
