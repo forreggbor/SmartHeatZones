@@ -1,3 +1,7 @@
+# <mark>FIGYELEM! Aktív fejlesztés alatt áll. Hibákat tartalmaz. Nem javasolt éles környezetben való használatra.</mark>
+
+# <mark>WARNING! Under active development. Contains errors. Not suitable to use in live environments.</mark>
+
 # SmartHeatZones v1.4.2
 
 **Multi-zone intelligent heating control for Home Assistant**  
