@@ -1,6 +1,0 @@
-- Színes preset gombok
-  - Komfort (22°C), 
-  - Eco (17°C), 
-  - Távol (19°C), 
-  - Automata (időzített)
-  - Manuális (mindent felülbírál)
