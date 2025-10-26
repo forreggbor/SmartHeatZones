@@ -1,0 +1,45 @@
+{
+  "title": "Okos Fűtési Zónák",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Új fűtési zóna hozzáadása",
+        "description": "Hozz létre egy új fűtési zónát a SmartHeatZones integrációhoz.",
+        "data": {
+          "title": "Zóna neve"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Ez a zóna már konfigurálva van."
+    }
+  },
+  "options": {
+    "step": {
+      "zone": {
+        "title": "Zóna beállításai",
+        "description": "Válaszd ki a szenzorokat, reléket és az időalapú hőmérséklet programot ehhez a zónához.",
+        "data": {
+          "sensor_entity_id": "Hőmérséklet szenzor",
+          "boiler_main_relay": "Kazán főkapcsoló (minden zónára közös)",
+          "relay_entities": "Zóna relék (szivattyú vagy szelep)",
+          "door_sensors": "Ajtó/ablak szenzorok (opcionális)",
+          "hysteresis": "Hiszterézis (°C)",
+          "active_blocks": "Aktív napszakok száma",
+          "b1_start": "1. napszak kezdete",
+          "b1_end": "1. napszak vége",
+          "b1_temp": "1. napszak hőmérséklet",
+          "b2_start": "2. napszak kezdete",
+          "b2_end": "2. napszak vége",
+          "b2_temp": "2. napszak hőmérséklet",
+          "b3_start": "3. napszak kezdete",
+          "b3_end": "3. napszak vége",
+          "b3_temp": "3. napszak hőmérséklet",
+          "b4_start": "4. napszak kezdete",
+          "b4_end": "4. napszak vége",
+          "b4_temp": "4. napszak hőmérséklet"
+        }
+      }
+    }
+  }
+}

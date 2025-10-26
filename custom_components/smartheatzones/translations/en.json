@@ -1,0 +1,45 @@
+{
+  "title": "Smart Heat Zones",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Smart Heat Zone",
+        "description": "Set up a new heating zone for your SmartHeatZones integration.",
+        "data": {
+          "title": "Zone name"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This zone is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "zone": {
+        "title": "Zone configuration",
+        "description": "Select sensors, relays, and time-based temperature schedule for this zone.",
+        "data": {
+          "sensor_entity_id": "Temperature sensor",
+          "boiler_main_relay": "Boiler main switch (shared across all zones)",
+          "relay_entities": "Zone relays (pump or valve)",
+          "door_sensors": "Door/Window sensors (optional)",
+          "hysteresis": "Hysteresis (°C)",
+          "active_blocks": "Number of active time blocks",
+          "b1_start": "Block 1 start time",
+          "b1_end": "Block 1 end time",
+          "b1_temp": "Block 1 temperature",
+          "b2_start": "Block 2 start time",
+          "b2_end": "Block 2 end time",
+          "b2_temp": "Block 2 temperature",
+          "b3_start": "Block 3 start time",
+          "b3_end": "Block 3 end time",
+          "b3_temp": "Block 3 temperature",
+          "b4_start": "Block 4 start time",
+          "b4_end": "Block 4 end time",
+          "b4_temp": "Block 4 temperature"
+        }
+      }
+    }
+  }
+}
