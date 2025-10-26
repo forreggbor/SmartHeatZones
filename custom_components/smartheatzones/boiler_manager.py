@@ -1,7 +1,5 @@
 """
 SmartHeatZones - Boiler Manager
-Version: 1.4.3 (HA 2025.10+ compatible)
-Author: forreggbor
 """
 
 import logging

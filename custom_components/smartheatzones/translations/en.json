@@ -26,41 +26,47 @@
   "options": {
     "step": {
       "init": {
-        "title": "Zone settings",
-        "description": "Adjust your heating parameters and schedule.",
+        "title": "Zone settings - v1.5.0",
+        "description": "Configure basic parameters, protections and schedule.",
         "data": {
           "sensor_entity_id": "Temperature sensor",
           "relay_entities": "Relays (pumps / valves)",
           "door_sensors": "Door / window sensors",
           "boiler_main": "Main boiler switch",
-          "hysteresis": "Hysteresis (°C)",
-          "label_1": "Period 1 name",
-          "start_1": "Period 1 start time",
-          "end_1": "Period 1 end time",
-          "temp_1": "Period 1 target temperature",
-          "label_2": "Period 2 name",
-          "start_2": "Period 2 start time",
-          "end_2": "Period 2 end time",
-          "temp_2": "Period 2 target temperature",
-          "label_3": "Period 3 name",
-          "start_3": "Period 3 start time",
-          "end_3": "Period 3 end time",
-          "temp_3": "Period 3 target temperature",
-          "label_4": "Period 4 name",
-          "start_4": "Period 4 start time",
-          "end_4": "Period 4 end time",
-          "temp_4": "Period 4 target temperature"
+          "hysteresis": "Base hysteresis (°C)",
+          "overheat_protection": "Overheat protection (°C)",
+          "outdoor_temp_sensor": "Outdoor sensor (for adaptive hysteresis)",
+          "adaptive_hysteresis_enabled": "Enable adaptive hysteresis",
+          "label_1": "Period 1",
+          "start_1": "Start",
+          "end_1": "End",
+          "temp_1": "Temperature (°C)",
+          "label_2": "Period 2",
+          "start_2": "Start",
+          "end_2": "End",
+          "temp_2": "Temperature (°C)",
+          "label_3": "Period 3",
+          "start_3": "Start",
+          "end_3": "End",
+          "temp_3": "Temperature (°C)",
+          "label_4": "Period 4",
+          "start_4": "Start",
+          "end_4": "End",
+          "temp_4": "Temperature (°C)"
         },
         "data_description": {
           "sensor_entity_id": "Temperature sensor entity for this zone",
-          "relay_entities": "Zone pump/valve relay switches (multiple selection allowed)",
+          "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)",
-          "boiler_main": "Shared main boiler switch (must be the same for all zones)",
-          "hysteresis": "Switching hysteresis - prevents frequent on/off cycling",
-          "label_1": "Example: Night, Morning, Day, Evening",
-          "start_1": "Period start time (HH:MM)",
-          "end_1": "Period end time (HH:MM)",
-          "temp_1": "Target temperature during this period (°C)"
+          "boiler_main": "Shared main boiler switch (same for all zones)",
+          "hysteresis": "Base switching hysteresis - prevents frequent cycling",
+          "overheat_protection": "If zone temperature reaches this value, heating shuts down immediately (safety)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
+          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)",
+          "label_1": "Period name (e.g. Night, Morning, Day, Evening)",
+          "start_1": "Period start time (hour:minute)",
+          "end_1": "Period end time (hour:minute)",
+          "temp_1": "Target temperature during this period"
         }
       }
     }
@@ -70,6 +76,41 @@
       "state": {
         "off": "Off",
         "heat": "Heat"
+      },
+      "state_attributes": {
+        "preset_mode": {
+          "name": "Preset Mode",
+          "state": {
+            "auto": "Auto",
+            "manual": "Manual",
+            "comfort": "Comfort",
+            "eco": "Eco",
+            "away": "Away"
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "preset_mode": {
+      "options": {
+        "auto": "Auto (schedule-based)",
+        "manual": "Manual (custom setting)",
+        "comfort": "Comfort (22°C)",
+        "eco": "Eco (17°C)",
+        "away": "Away (19°C)"
+      }
+    }
+  },
+  "services": {
+    "set_preset_mode": {
+      "name": "Set preset mode",
+      "description": "Switch preset mode (Auto, Manual, Comfort, Eco, Away)",
+      "fields": {
+        "preset_mode": {
+          "name": "Preset mode",
+          "description": "Select desired preset mode"
+        }
       }
     }
   }
