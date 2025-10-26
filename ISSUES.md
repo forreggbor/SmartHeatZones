@@ -1,0 +1,12 @@
+- Figyelje a hőmérséklet szenzorokat és ha lecsökken a beállított érték alá, akor kapcsolja be a zónát. Ha felemelkedik a hőmérséklet a beállított érték fölé, akkor kapcsoljon ki.
+- Vizsgálja a relé állapotokat és manuális változtatás esetén aktualizálja az állapotokat.
+- Legyen egy manuális vs auto kapcsoló. Manuális esetén ne álljon vissza a napszakos automatikus fűtési rend. 
+- Túlmelegedés elleni védelem (26°C)
+- Színes preset gombok
+   - Preset módok: 
+     - Komfort (22°C), 
+     - Eco (17°C), 
+     - Távol (19°C), 
+     - Automata (időzített)
+     - Manuális (mindent felülbírál)
+- Külső hőmérséklet alapú szezonfelismerés
