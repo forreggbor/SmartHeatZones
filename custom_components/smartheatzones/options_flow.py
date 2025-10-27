@@ -154,22 +154,27 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         
         # Build info text for common settings
         if common_info:
-            outdoor_temp = ""
-            if common_info["outdoor"] != "Nincs beállítva":
-                outdoor_state = self.hass.states.get(common_info["outdoor"])
-                if outdoor_state and outdoor_state.state not in ["unavailable", "unknown"]:
-                    outdoor_temp = f" ({outdoor_state.state}°C)"
+            outdoor_value = common_info.get('outdoor', '')
+            outdoor_display = outdoor_value if outdoor_value else "—"
+            
+            if outdoor_value:
+                outdoor_state = self.hass.states.get(outdoor_value)
+                if outdoor_state and outdoor_state.state not in ["unavailable", "unknown", "none"]:
+                    outdoor_display = f"{outdoor_value} ({outdoor_state.state}°C)"
+            
+            adaptive_text = "BE" if common_info.get('adaptive', False) else "KI"
             
             info_text = (
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📋 Közös beállítások (módosítás: 🔧 Közös beállítások zónában)\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🔥 Kazán főkapcsoló: {common_info['boiler']}\n"
-                f"🌡️ Kültéri hőmérő: {common_info['outdoor']}{outdoor_temp}\n"
-                f"📊 Hiszterézis: {common_info['hysteresis']}°C\n"
-                f"🔥 Túlmelegedés védelem: {common_info['overheat']}°C\n"
-                f"🔄 Adaptív hiszterézis: {'BE' if common_info['adaptive'] else 'KI'}\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                f"🔥 Kazán főkapcsoló: {common_info.get('boiler', '—')}\n"
+                f"🌡️ Kültéri hőmérő: {outdoor_display}\n"
+                f"📊 Hiszterézis: {common_info.get('hysteresis', 0.3)}°C\n"
+                f"🔥 Túlmelegedés védelem: {common_info.get('overheat', 26.0)}°C\n"
+                f"🔄 Adaptív hiszterézis: {adaptive_text}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🏠 Zóna-specifikus beállítások:"
             )
         else:
             info_text = "⚠️ Közös beállítások nem találhatók!"

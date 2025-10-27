@@ -73,7 +73,7 @@
       },
       "zone": {
         "title": "{title} - Beállítások v{version}",
-        "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Közös beállítások (módosítás: 🔧 Közös beállítások zónában)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔥 Kazán főkapcsoló: {boiler}\n🌡️ Kültéri hőmérő: {outdoor}\n📊 Hiszterézis: {hysteresis}°C\n🔥 Túlmelegedés védelem: {overheat}°C\n🔄 Adaptív hiszterézis: {adaptive}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏠 Zóna-specifikus beállítások:",
+        "description": "Zóna-specifikus beállítások konfigurálása. A közös beállításokat (kazán, hiszterézis, stb.) a 🔧 Közös beállítások zónában tudod módosítani.",
         "data": {
           "heating_mode": "Fűtési mód",
           "sensor_entity_id": "Zóna hőmérő szenzor",

@@ -73,7 +73,7 @@
       },
       "zone": {
         "title": "{title} - Settings v{version}",
-        "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Common Settings (modify in: 🔧 Common Settings zone)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔥 Main boiler switch: {boiler}\n🌡️ Outdoor sensor: {outdoor}\n📊 Hysteresis: {hysteresis}°C\n🔥 Overheat protection: {overheat}°C\n🔄 Adaptive hysteresis: {adaptive}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏠 Zone-specific settings:",
+        "description": "Configure zone-specific settings. Common settings (boiler, hysteresis, etc.) can be modified in the 🔧 Common Settings zone.",
         "data": {
           "heating_mode": "Heating mode",
           "sensor_entity_id": "Zone temperature sensor",
