@@ -2,22 +2,50 @@
   "title": "Smart Heat Zones",
   "config": {
     "step": {
-      "user": {
-        "title": "Add new heating zone",
-        "description": "Define your new heating zone settings.",
+      "common_settings": {
+        "title": "Create Common Settings",
+        "description": "These settings apply to all heating zones.\n\n⚠️ IMPORTANT: You must create common settings first before adding any heating zones. Common settings include the boiler main switch, hysteresis value, and other global parameters that all zones will use.",
+        "data": {
+          "boiler_main": "Main boiler switch",
+          "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
+          "hysteresis": "Base hysteresis",
+          "overheat_temp": "Overheat protection",
+          "adaptive_hysteresis_enabled": "Adaptive hysteresis"
+        },
+        "data_description": {
+          "boiler_main": "Shared main boiler switch (same for all zones)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
+          "hysteresis": "Base switching hysteresis - prevents frequent cycling (radiators only)",
+          "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately",
+          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather"
+        }
+      },
+      "zone": {
+        "title": "Create New Heating Zone",
+        "description": "Define your new heating zone parameters.",
         "data": {
           "title": "Zone name",
-          "sensor_entity_id": "Temperature sensor",
+          "heating_mode": "Heating mode",
+          "sensor_entity_id": "Zone temperature sensor",
           "relay_entities": "Zone relays",
-          "door_sensors": "Door / window sensors",
-          "boiler_main": "Main boiler switch",
-          "hysteresis": "Hysteresis (°C)"
+          "door_sensors": "Door / window sensors"
+        },
+        "data_description": {
+          "title": "Unique name for the heating zone",
+          "heating_mode": "Radiator: uses hysteresis | Underfloor: instant on/off (due to thermal inertia)",
+          "sensor_entity_id": "Temperature sensor for this zone",
+          "relay_entities": "Zone pump/valve relay switches",
+          "door_sensors": "Door/window sensors - pause heating when open (optional)"
         }
       }
     },
     "error": {
       "unknown": "Unknown error occurred.",
-      "cannot_connect": "Could not connect."
+      "cannot_connect": "Could not connect.",
+      "boiler_required": "Main boiler switch is required!",
+      "title_required": "Zone name is required!",
+      "sensor_required": "Temperature sensor is required!",
+      "relay_required": "At least one zone relay is required!"
     },
     "abort": {
       "single_instance_allowed": "This integration is already configured."
@@ -25,18 +53,32 @@
   },
   "options": {
     "step": {
-      "init": {
-        "title": "Zone settings - v1.5.1",
-        "description": "Configure basic parameters, protections and schedule.",
+      "common_settings": {
+        "title": "Common Settings - v1.6.0",
+        "description": "These settings apply to all heating zones.",
         "data": {
           "boiler_main": "Main boiler switch",
           "outdoor_temp_sensor": "Outdoor temperature sensor",
-          "sensor_entity_id": "Zone temperature sensor",
-          "relay_entities": "Zone relays (pumps / valves)",
-          "door_sensors": "Zone door / window sensors",
           "hysteresis": "Base hysteresis (°C)",
-          "overheat_protection": "Overheat protection (°C)",
-          "adaptive_hysteresis_enabled": "Enable adaptive hysteresis",
+          "overheat_temp": "Overheat protection (°C)",
+          "adaptive_hysteresis_enabled": "Adaptive hysteresis"
+        },
+        "data_description": {
+          "boiler_main": "Shared main boiler switch (same for all zones)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
+          "hysteresis": "Base switching hysteresis - radiators only (underfloor has no hysteresis)",
+          "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately (safety)",
+          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)"
+        }
+      },
+      "zone": {
+        "title": "{title} - Settings v1.6.0",
+        "description": "{common_info}\n\n🏠 Zone-specific settings:",
+        "data": {
+          "heating_mode": "Heating mode",
+          "sensor_entity_id": "Zone temperature sensor",
+          "relay_entities": "Zone relays",
+          "door_sensors": "Door / window sensors",
           "label_1": "Period 1 name",
           "start_1": "Period 1 start",
           "end_1": "Period 1 end",
@@ -55,14 +97,10 @@
           "temp_4": "Period 4 temperature"
         },
         "data_description": {
-          "boiler_main": "Shared main boiler switch (same for all zones)",
-          "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
+          "heating_mode": "Radiator: uses hysteresis | Underfloor: instant on/off (due to thermal inertia)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)",
-          "hysteresis": "Base switching hysteresis - prevents frequent cycling",
-          "overheat_protection": "If zone temperature reaches this value, heating shuts down immediately (safety)",
-          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)",
           "label_1": "Period name (e.g. Night, Morning, Day, Evening)",
           "start_1": "Period start time (hour:minute)",
           "end_1": "Period end time (hour:minute)",
@@ -87,6 +125,13 @@
             "eco": "Eco",
             "away": "Away"
           }
+        },
+        "heating_mode": {
+          "name": "Heating Mode",
+          "state": {
+            "radiator": "Radiator",
+            "underfloor": "Underfloor"
+          }
         }
       }
     }
@@ -99,6 +144,12 @@
         "comfort": "Comfort (22°C)",
         "eco": "Eco (17°C)",
         "away": "Away (19°C)"
+      }
+    },
+    "heating_mode": {
+      "options": {
+        "radiator": "Radiator (with hysteresis)",
+        "underfloor": "Underfloor (instant switching)"
       }
     }
   },

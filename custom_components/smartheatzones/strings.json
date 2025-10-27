@@ -2,41 +2,83 @@
   "title": "Smart Heat Zones",
   "config": {
     "step": {
-      "user": {
+      "common_settings": {
+        "title": "Közös beállítások létrehozása",
+        "description": "Ezek a beállítások minden fűtési zónára érvényesek lesznek.\n\n⚠️ FONTOS: Először a közös beállításokat kell létrehozni, mielőtt bármilyen fűtési zónát hozzáadhatnál. A közös beállítások tartalmazzák a kazán főkapcsolót, a hiszterézis értékét és más globális paramétereket, amelyeket minden zóna használni fog.",
+        "data": {
+          "boiler_main": "Kazán főkapcsoló",
+          "outdoor_temp_sensor": "Kültéri hőmérő szenzor (opcionális)",
+          "hysteresis": "Alap hiszterézis",
+          "overheat_temp": "Túlmelegedés védelem",
+          "adaptive_hysteresis_enabled": "Adaptív hiszterézis"
+        },
+        "data_description": {
+          "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz)",
+          "outdoor_temp_sensor": "Kültéri hőmérséklet szenzor - adaptív hiszterézishez (opcionális)",
+          "hysteresis": "Alap kapcsolási hiszterézis - megakadályozza a gyakori be-ki kapcsolást (csak radiátorokhoz)",
+          "overheat_temp": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés",
+          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben"
+        }
+      },
+      "zone": {
         "title": "Új fűtési zóna létrehozása",
-        "description": "Add meg a zóna beállításait.",
+        "description": "Add meg az új fűtési zóna paramétereit.",
         "data": {
           "title": "Zóna neve",
-          "sensor_entity_id": "Hőmérséklet érzékelő",
-          "relay_entities": "Zóna relék (szivattyú / szelep)",
-          "door_sensors": "Ajtó / ablak érzékelők",
-          "boiler_main": "Kazán főkapcsoló",
-          "hysteresis": "Hiszterézis (°C)"
+          "heating_mode": "Fűtési mód",
+          "sensor_entity_id": "Zóna hőmérő szenzor",
+          "relay_entities": "Zóna relék",
+          "door_sensors": "Ajtó / ablak érzékelők"
+        },
+        "data_description": {
+          "title": "A fűtési zóna egyedi neve",
+          "heating_mode": "Radiátor: hiszterézis használata | Padlófűtés: azonnali ki/bekapcsolás (hőtehetetlenség miatt)",
+          "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor",
+          "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék",
+          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)"
         }
       }
     },
-    "abort": {
-      "single_instance_allowed": "Ez az integráció már konfigurálva van.",
-      "cannot_connect": "Nem sikerült csatlakozni."
-    },
     "error": {
-      "unknown": "Ismeretlen hiba történt."
+      "unknown": "Ismeretlen hiba történt.",
+      "cannot_connect": "Nem sikerült kapcsolatot létesíteni.",
+      "boiler_required": "Kazán főkapcsoló kötelező!",
+      "title_required": "Zóna neve kötelező!",
+      "sensor_required": "Hőmérő szenzor kötelező!",
+      "relay_required": "Legalább egy zóna relé kötelező!"
+    },
+    "abort": {
+      "single_instance_allowed": "Ez az integráció már konfigurálva van."
     }
   },
   "options": {
     "step": {
-      "init": {
-        "title": "Zóna beállításai - v1.5.1",
-        "description": "Alapvető paraméterek, védelmek és napszakos ütemezés beállítása.",
+      "common_settings": {
+        "title": "Közös beállítások módosítása - v1.6.0",
+        "description": "Ezek a beállítások minden fűtési zónára érvényesek.",
         "data": {
           "boiler_main": "Kazán főkapcsoló",
           "outdoor_temp_sensor": "Kültéri hőmérő szenzor",
+          "hysteresis": "Alap hiszterézis",
+          "overheat_temp": "Túlmelegedés védelem",
+          "adaptive_hysteresis_enabled": "Adaptív hiszterézis"
+        },
+        "data_description": {
+          "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz)",
+          "outdoor_temp_sensor": "Kültéri hőmérséklet szenzor - adaptív hiszterézishez (opcionális)",
+          "hysteresis": "Alap kapcsolási hiszterézis - csak radiátorokhoz (padlófűtésnél nincs hiszterézis)",
+          "overheat_temp": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés",
+          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben"
+        }
+      },
+      "zone": {
+        "title": "{title} - Beállítások v1.6.0",
+        "description": "{common_info}\n\n🏠 Zóna-specifikus beállítások:",
+        "data": {
+          "heating_mode": "Fűtési mód",
           "sensor_entity_id": "Zóna hőmérő szenzor",
-          "relay_entities": "Zóna relék (szivattyúk / szelepek)",
-          "door_sensors": "Zóna ajtó- / ablakérzékelők",
-          "hysteresis": "Alap hiszterézis (°C)",
-          "overheat_protection": "Túlmelegedés védelem (°C)",
-          "adaptive_hysteresis_enabled": "Adaptív hiszterézis engedélyezése",
+          "relay_entities": "Zóna relék",
+          "door_sensors": "Ajtó / ablak érzékelők",
           "label_1": "1. időszak neve",
           "start_1": "1. kezdés",
           "end_1": "1. vége",
@@ -55,17 +97,13 @@
           "temp_4": "4. hőmérséklet"
         },
         "data_description": {
-          "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
-          "outdoor_temp_sensor": "Kültéri hőmérséklet szenzor - adaptív hiszterézishez szükséges (opcionális)",
-          "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
-          "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
-          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
-          "hysteresis": "Alap kapcsolási hiszterézis - megakadályozza a gyakori be-ki kapcsolást",
-          "overheat_protection": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés (védelem)",
-          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)",
-          "label_1": "Napszak neve (pl. Éjszaka, Reggel, Nappal, Este)",
-          "start_1": "Napszak kezdete (óra:perc)",
-          "end_1": "Napszak vége (óra:perc)",
+          "heating_mode": "Radiátor: hiszterézis használata | Padlófűtés: azonnali ki/bekapcsolás",
+          "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor",
+          "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék",
+          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése",
+          "label_1": "Napszak neve (pl. Éjszaka, Reggel)",
+          "start_1": "Napszak kezdete",
+          "end_1": "Napszak vége",
           "temp_1": "Célhőmérséklet ebben az időszakban"
         }
       }
@@ -87,6 +125,13 @@
             "eco": "Eco",
             "away": "Távol"
           }
+        },
+        "heating_mode": {
+          "name": "Fűtési mód",
+          "state": {
+            "radiator": "Radiátor",
+            "underfloor": "Padlófűtés"
+          }
         }
       }
     }
@@ -100,17 +145,11 @@
         "eco": "Eco (17°C)",
         "away": "Távol (19°C)"
       }
-    }
-  },
-  "services": {
-    "set_preset_mode": {
-      "name": "Üzemmód beállítása",
-      "description": "Preset mód váltása (Auto, Kézi, Komfort, Eco, Távol)",
-      "fields": {
-        "preset_mode": {
-          "name": "Üzemmód",
-          "description": "Válaszd ki a kívánt preset módot"
-        }
+    },
+    "heating_mode": {
+      "options": {
+        "radiator": "Radiátor (hiszterézis használata)",
+        "underfloor": "Padlófűtés (azonnali kapcsolás)"
       }
     }
   }

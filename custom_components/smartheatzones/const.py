@@ -1,19 +1,19 @@
 """
 SmartHeatZones - Constants
-Version: 1.5.1 (HA 2025.10+ compatible)
+Version: 1.6.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.6.0 (MAJOR UPDATE):
+- Common settings zone (mandatory, non-deletable)
+- Shared configuration: boiler, hysteresis, overheat, outdoor sensor
+- Underfloor heating mode (no hysteresis)
+- HVAC OFF vs Idle logic fix
+- Zone-specific settings only
 
 CHANGELOG v1.5.1:
 - Schedule reload fix (update listener)
 - Auto HEAT restart when temp drops below target (even if HVAC OFF)
 - Removed DEFAULT_AUTO_SCHEDULE fallback (empty schedule = warning)
-
-CHANGELOG v1.5.0:
-- Preset modes (Auto, Manual, Comfort, Eco, Away)
-- Relay state monitoring
-- Overheat protection
-- Adaptive hysteresis
-- Outdoor temperature sensor
 """
 
 # --- Alap integrációs konstansok ------------------------------------------------
@@ -28,21 +28,35 @@ DATA_ENTRIES = "entries"
 DATA_ACTIVE_ZONES = "active_zones"
 DATA_BOILER_MAIN = "boiler_manager"
 DATA_OUTDOOR_TEMP = "outdoor_temp_sensor"
+DATA_COMMON_SETTINGS = "common_settings"  # NEW v1.6.0: Common settings entry
+
+# --- Közös beállítások (v1.6.0) -------------------------------------------------
+
+COMMON_SETTINGS_TITLE = "🔧 Közös beállítások"  # Fixed title for common settings
+CONF_IS_COMMON_SETTINGS = "is_common_settings"  # Flag to identify common settings entry
 
 # --- Konfigurációs kulcsok ------------------------------------------------------
 
+# Zone-specific config keys
+CONF_TITLE = "title"
 CONF_SENSOR = "sensor_entity_id"
 CONF_ZONE_RELAYS = "relay_entities"
 CONF_DOOR_SENSORS = "door_sensors"
+CONF_SCHEDULE = "schedule"
+CONF_HEATING_MODE = "heating_mode"  # NEW v1.6.0: radiator or underfloor
+
+# Common settings config keys (v1.6.0)
 CONF_BOILER_MAIN = "boiler_main"
 CONF_HYSTERESIS = "hysteresis"
-CONF_SCHEDULE = "schedule"
-CONF_TITLE = "title"
-
-# v1.5.0+: További konfigurációs kulcsok
 CONF_OVERHEAT_PROTECTION = "overheat_temp"
 CONF_OUTDOOR_SENSOR = "outdoor_temp_sensor"
 CONF_ADAPTIVE_HYSTERESIS = "adaptive_hysteresis_enabled"
+
+# --- Fűtési módok (v1.6.0) ------------------------------------------------------
+
+HEATING_MODE_RADIATOR = "radiator"
+HEATING_MODE_UNDERFLOOR = "underfloor"
+HEATING_MODES = [HEATING_MODE_RADIATOR, HEATING_MODE_UNDERFLOOR]
 
 # --- Preset módok (Better Thermostat kompatibilis) ------------------------------
 
@@ -75,9 +89,7 @@ PRESET_TEMPERATURES = {
 DEFAULT_HYSTERESIS = 0.3
 DEFAULT_OVERHEAT_TEMP = 26.0
 DEFAULT_ADAPTIVE_HYSTERESIS = True
-
-# REMOVED in v1.5.1: DEFAULT_AUTO_SCHEDULE
-# Empty schedule now triggers a warning instead of using default values
+DEFAULT_HEATING_MODE = HEATING_MODE_RADIATOR  # NEW v1.6.0
 
 # --- Adaptív hiszterézis beállítások ---------------------------------------------
 
@@ -103,7 +115,7 @@ STATE_IDLE = "idle"
 DEBUG_MODE = True
 
 # --- Fájl metaadatok -------------------------------------------------------------
-INTEGRATION_VERSION = "1.5.1"
+INTEGRATION_VERSION = "1.6.0"
 AUTHOR = "forreggbor"
 
 # --- Hibaüzenetek és diagnosztika ------------------------------------------------
@@ -113,3 +125,5 @@ ERR_BOILER_MISSING = "Boiler switch entity not defined or unavailable"
 ERR_INVALID_TEMP = "Invalid temperature value received from sensor"
 ERR_OVERHEAT = "Overheat protection triggered"
 ERR_OUTDOOR_SENSOR_UNAVAILABLE = "Outdoor temperature sensor unavailable"
+ERR_NO_COMMON_SETTINGS = "Common settings must be configured first"  # NEW v1.6.0
+ERR_CANNOT_DELETE_COMMON = "Cannot delete common settings while zones exist"  # NEW v1.6.0

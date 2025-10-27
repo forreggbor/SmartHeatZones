@@ -1,5 +1,8 @@
 """
 SmartHeatZones - Boiler Manager
+Version: 1.6.0 (unchanged from 1.5.x)
+
+Central boiler relay coordinator - manages shared boiler switch across all zones.
 """
 
 import logging

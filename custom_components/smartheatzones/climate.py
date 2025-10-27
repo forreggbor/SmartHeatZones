@@ -1,17 +1,17 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.5.1 (HA 2025.10+ compatible)
+Version: 1.6.0 (HA 2025.10+ compatible)
 Author: forreggbor
 
-FIXES in 1.5.1:
-- Schedule reload on options update (update listener in __init__.py)
-- Auto HEAT restart when temp drops below target (even if HVAC mode is OFF)
-- DEFAULT_AUTO_SCHEDULE fallback removed (empty schedule = warning only)
+NEW in v1.6.0:
+- Common settings integration (read shared config)
+- Underfloor heating mode (no hysteresis)
+- HVAC OFF vs Idle logic fix (always HEAT when adjusting)
+- Zone-specific configuration only
 
-FIXES in 1.5.0-fixed:
-- Event-based relay monitoring (instant detection, no polling delay)
-- Preset mode icons for Auto and Manual
-- Schedule UI in options (compact, one row per period)
+FIXES in 1.5.1:
+- Schedule reload on options update
+- Auto HEAT restart when temp drops below target
 """
 
 import logging
@@ -35,19 +35,23 @@ from .const import (
     DOMAIN,
     DATA_BOILER_MAIN,
     DATA_ACTIVE_ZONES,
-    DATA_OUTDOOR_TEMP,
+    DATA_COMMON_SETTINGS,
     CONF_SENSOR,
     CONF_ZONE_RELAYS,
-    CONF_BOILER_MAIN,
     CONF_DOOR_SENSORS,
-    CONF_HYSTERESIS,
     CONF_SCHEDULE,
+    CONF_HEATING_MODE,
+    CONF_BOILER_MAIN,
+    CONF_HYSTERESIS,
     CONF_OVERHEAT_PROTECTION,
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
+    DEFAULT_HEATING_MODE,
+    HEATING_MODE_RADIATOR,
+    HEATING_MODE_UNDERFLOOR,
     PRESET_AUTO,
     PRESET_MANUAL,
     PRESET_COMFORT,
@@ -64,43 +68,69 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _get_common_settings(hass: HomeAssistant) -> dict:
+    """Get common settings from DATA_COMMON_SETTINGS entry."""
+    common_entry = hass.data.get(DOMAIN, {}).get(DATA_COMMON_SETTINGS)
+    if common_entry:
+        # Return options if available, otherwise data
+        return common_entry.options if common_entry.options else common_entry.data
+    return {}
+
+
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
-    """Platform beállítása és zónák létrehozása."""
+    """Platform setup - zone creation with common settings."""
     name = entry.title
-    data = entry.options if entry.options else entry.data
+    zone_data = entry.options if entry.options else entry.data
+    
+    # NEW v1.6.0: Load common settings
+    common_settings = _get_common_settings(hass)
+    
+    if not common_settings:
+        _LOGGER.error(
+            "%s [%s] Cannot create zone - common settings not found!",
+            LOG_PREFIX, name
+        )
+        return
 
-    sensor = data.get(CONF_SENSOR)
-    relays = data.get(CONF_ZONE_RELAYS, [])
-    boiler_entity = data.get(CONF_BOILER_MAIN)
-    doors = data.get(CONF_DOOR_SENSORS, [])
-    hysteresis = data.get(CONF_HYSTERESIS, DEFAULT_HYSTERESIS)
-
-    # FIX v1.5.1: No default schedule fallback - warn if empty
-    schedule = data.get(CONF_SCHEDULE, [])
+    # Zone-specific config
+    sensor = zone_data.get(CONF_SENSOR)
+    relays = zone_data.get(CONF_ZONE_RELAYS, [])
+    doors = zone_data.get(CONF_DOOR_SENSORS, [])
+    heating_mode = zone_data.get(CONF_HEATING_MODE, DEFAULT_HEATING_MODE)
+    schedule = zone_data.get(CONF_SCHEDULE, [])
+    
     if not schedule:
         _LOGGER.warning(
-            "%s [%s] No schedule configured! Set it in Options. Auto preset will not work.",
+            "%s [%s] No schedule configured! Auto preset will not work.",
             LOG_PREFIX, name
         )
 
-    overheat_temp = data.get(CONF_OVERHEAT_PROTECTION, DEFAULT_OVERHEAT_TEMP)
-    outdoor_sensor = data.get(CONF_OUTDOOR_SENSOR)
-    adaptive_hyst = data.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
+    # Common settings (shared across zones)
+    boiler_entity = common_settings.get(CONF_BOILER_MAIN)
+    hysteresis = common_settings.get(CONF_HYSTERESIS, DEFAULT_HYSTERESIS)
+    overheat_temp = common_settings.get(CONF_OVERHEAT_PROTECTION, DEFAULT_OVERHEAT_TEMP)
+    outdoor_sensor = common_settings.get(CONF_OUTDOOR_SENSOR)
+    adaptive_hyst = common_settings.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
 
     _LOGGER.info(
-        "%s Creating climate entity: %s | Sensor=%s | Relays=%s | Overheat=%.1f°C | Schedule=%d blocks",
-        LOG_PREFIX, name, sensor, relays, overheat_temp, len(schedule)
+        "%s Creating climate entity: %s | Mode=%s | Sensor=%s | Relays=%s | Schedule=%d blocks",
+        LOG_PREFIX, name, heating_mode, sensor, relays, len(schedule)
+    )
+    _LOGGER.info(
+        "%s [%s] Common settings: Boiler=%s | Hyst=%.2f°C | Overheat=%.1f°C | Adaptive=%s",
+        LOG_PREFIX, name, boiler_entity, hysteresis, overheat_temp, adaptive_hyst
     )
 
     entity = SmartHeatZoneClimate(
         hass=hass,
         name=name,
+        heating_mode=heating_mode,
         sensor_entity_id=sensor,
         relay_entities=relays,
-        boiler_entity=boiler_entity,
         door_sensors=doors,
-        hysteresis=hysteresis,
         schedule=schedule,
+        boiler_entity=boiler_entity,
+        hysteresis=hysteresis,
         overheat_temp=overheat_temp,
         outdoor_sensor=outdoor_sensor,
         adaptive_hysteresis_enabled=adaptive_hyst,
@@ -110,7 +140,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 
 
 class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
-    """Zóna termosztát entitás v1.5.1."""
+    """Zone thermostat entity v1.6.0."""
 
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
@@ -126,52 +156,56 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self,
         hass: HomeAssistant,
         name: str,
+        heating_mode: str,
         sensor_entity_id: str,
         relay_entities: list[str],
-        boiler_entity: Optional[str],
         door_sensors: list[str],
-        hysteresis: float,
         schedule: list,
+        boiler_entity: Optional[str],
+        hysteresis: float,
         overheat_temp: float,
         outdoor_sensor: Optional[str],
         adaptive_hysteresis_enabled: bool,
     ):
-        """Inicializálás."""
+        """Initialize zone thermostat."""
         self.hass = hass
         self._attr_name = name
         self._attr_unique_id = f"{DOMAIN}_{name.lower().replace(' ', '_')}"
 
+        # Zone-specific
+        self._heating_mode = heating_mode
         self._sensor_entity_id = sensor_entity_id
         self._relay_entities = relay_entities or []
-        self._boiler_entity = boiler_entity
         self._door_sensors = door_sensors or []
-        self._base_hysteresis = hysteresis
         self._schedule = schedule or []
+
+        # Common settings (from common entry)
+        self._boiler_entity = boiler_entity
+        self._base_hysteresis = hysteresis
         self._overheat_temp = overheat_temp
         self._outdoor_sensor = outdoor_sensor
         self._adaptive_hysteresis_enabled = adaptive_hysteresis_enabled
 
+        # Runtime state
         self._current_temp = None
         self._target_temp = 21.0
         self._hvac_mode = HVACMode.HEAT
         self._is_heating = False
         self._preset_mode = PRESET_AUTO
-
         self._schedule_tracker = None
         self._outdoor_temp = None
         self._boiler = hass.data[DOMAIN][DATA_BOILER_MAIN]
 
         _LOGGER.info(
-            "%s [%s] Initialized | Preset=%s | Overheat=%.1f°C | Adaptive=%s",
-            LOG_PREFIX, self.name, self._preset_mode, self._overheat_temp,
-            self._adaptive_hysteresis_enabled
+            "%s [%s] Initialized | Mode=%s | Preset=%s | Overheat=%.1f°C",
+            LOG_PREFIX, self.name, self._heating_mode, self._preset_mode, self._overheat_temp
         )
 
         if self._schedule and self._preset_mode == PRESET_AUTO:
             self._apply_current_schedule_block()
 
     async def async_added_to_hass(self):
-        """Entitás hozzáadása HA-hoz."""
+        """Entity added to Home Assistant."""
         await super().async_added_to_hass()
 
         # State restoration
@@ -189,7 +223,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 self._preset_mode = last_state.attributes["preset_mode"]
                 _LOGGER.info("%s [%s] Restored preset: %s", LOG_PREFIX, self.name, self._preset_mode)
 
-        # Hőmérséklet szenzor
+        # Temperature sensor tracking
         if self._sensor_entity_id:
             async_track_state_change_event(
                 self.hass,
@@ -205,7 +239,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 except (ValueError, TypeError):
                     pass
 
-        # FIX #1: EVENT-BASED RELAY MONITORING (Azonnali reagálás!)
+        # Event-based relay monitoring
         if self._relay_entities:
             for relay_id in self._relay_entities:
                 async_track_state_change_event(
@@ -218,7 +252,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 LOG_PREFIX, self.name, len(self._relay_entities)
             )
 
-        # Kültéri szenzor
+        # Outdoor sensor tracking
         if self._outdoor_sensor and self._adaptive_hysteresis_enabled:
             async_track_state_change_event(
                 self.hass,
@@ -234,7 +268,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 except (ValueError, TypeError):
                     pass
 
-        # Ajtó/ablak szenzorok
+        # Door/window sensors
         for door in self._door_sensors:
             async_track_state_change_event(
                 self.hass,
@@ -252,57 +286,44 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.debug("%s [%s] Schedule tracker enabled", LOG_PREFIX, self.name)
 
         await self._evaluate_heating()
-
     # ==================================================================================
-    # FIX #1: EVENT-BASED RELAY MONITORING
+    # EVENT-BASED RELAY MONITORING
     # ==================================================================================
 
     @callback
     async def _relay_state_changed(self, event):
-        """
-        AZONNALI relay állapot változás detektálás (event-based).
-
-        Ha egy relay állapota megváltozik (manuális kapcsolás):
-        - Azonnal frissíti az integráció állapotát
-        - Szinkronizálja a kazán koordinációt
-        """
+        """Instant relay state change detection (event-based)."""
         new_state = event.data.get("new_state")
         old_state = event.data.get("old_state")
 
         if not new_state or not old_state:
             return
 
-        # Ha állapot változott
         if new_state.state != old_state.state:
             relay_id = new_state.entity_id
-            is_on = new_state.state == "on"
-
             _LOGGER.info(
                 "%s [%s] Relay state changed: %s → %s (event-based detection)",
                 LOG_PREFIX, self.name, relay_id, new_state.state.upper()
             )
 
-            # Ellenőrizzük az összes relay állapotát
+            # Check all relay states
             relay_states = []
             for r_id in self._relay_entities:
                 r_state = self.hass.states.get(r_id)
                 if r_state:
                     relay_states.append(r_state.state == "on")
 
-            # BÁRMELYIK relay BE → zóna heating
             actual_heating = any(relay_states) if relay_states else False
 
-            # Ha eltér az integráció által várt állapottól
             if actual_heating != self._is_heating:
                 _LOGGER.warning(
-                    "%s [%s] MANUAL OVERRIDE DETECTED! Expected=%s, Actual=%s → Synchronizing immediately",
+                    "%s [%s] MANUAL OVERRIDE DETECTED! Expected=%s, Actual=%s → Synchronizing",
                     LOG_PREFIX, self.name, self._is_heating, actual_heating
                 )
 
-                # Szinkronizálás
                 self._is_heating = actual_heating
 
-                # Kazán koordináció
+                # Boiler coordination
                 if actual_heating and self._boiler_entity:
                     await self._boiler.turn_on(self._boiler_entity, zone=self.name)
                 elif not actual_heating and self._boiler_entity:
@@ -310,18 +331,13 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
                 self.async_write_ha_state()
 
-                _LOGGER.info(
-                    "%s [%s] Synchronized: heating=%s",
-                    LOG_PREFIX, self.name, "ON" if actual_heating else "OFF"
-                )
-
     # ==================================================================================
-    # SZENZOR CALLBACKS
+    # SENSOR CALLBACKS
     # ==================================================================================
 
     @callback
     async def _sensor_changed(self, event):
-        """Hőmérséklet szenzor változás."""
+        """Temperature sensor change."""
         new_state = event.data.get("new_state")
         if not new_state:
             return
@@ -335,18 +351,15 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.debug("%s [%s] Sensor: %.2f°C", LOG_PREFIX, self.name, self._current_temp)
 
             await self._check_overheat_protection()
-
-            # FIX v1.5.1: Auto-restart HEAT if temp drops below target (even if HVAC mode is OFF)
             await self._auto_heat_restart()
-
             await self._evaluate_heating()
 
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             _LOGGER.error("%s [%s] Invalid sensor value: %s", LOG_PREFIX, self.name, new_state.state)
 
     @callback
     async def _outdoor_sensor_changed(self, event):
-        """Kültéri hőmérséklet változás."""
+        """Outdoor temperature change."""
         new_state = event.data.get("new_state")
         if not new_state or new_state.state in ["unavailable", "unknown", "none"]:
             return
@@ -354,10 +367,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         try:
             old_outdoor = self._outdoor_temp
             self._outdoor_temp = float(new_state.state)
-            _LOGGER.debug(
-                "%s [%s] Outdoor: %.2f°C",
-                LOG_PREFIX, self.name, self._outdoor_temp
-            )
+            _LOGGER.debug("%s [%s] Outdoor: %.2f°C", LOG_PREFIX, self.name, self._outdoor_temp)
 
             if old_outdoor is not None and abs(self._outdoor_temp - old_outdoor) > 5.0:
                 _LOGGER.info(
@@ -371,7 +381,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
     @callback
     async def _door_changed(self, event):
-        """Ajtó/ablak változás."""
+        """Door/window sensor change."""
         new_state = event.data.get("new_state")
         if new_state and new_state.state == "on":
             _LOGGER.warning("%s [%s] Door/window open – heating paused", LOG_PREFIX, self.name)
@@ -385,38 +395,37 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     # ==================================================================================
 
     async def _check_overheat_protection(self):
-        """Túlmelegedés védelem."""
+        """Overheat protection check."""
         if self._current_temp is None:
             return
 
         if self._current_temp >= self._overheat_temp:
             if self._is_heating:
                 _LOGGER.error(
-                    "%s [%s] OVERHEAT! Current=%.2f°C >= Limit=%.1f°C → Shutdown",
+                    "%s [%s] OVERHEAT! Current=%.2f°C >= Limit=%.1f°C → Emergency shutdown",
                     LOG_PREFIX, self.name, self._current_temp, self._overheat_temp
                 )
                 await self._set_heating(False, reason=ERR_OVERHEAT)
 
     # ==================================================================================
-    # FIX v1.5.1: AUTO HEAT RESTART
+    # AUTO HEAT RESTART (v1.6.0 - Only if explicitly set to OFF)
     # ==================================================================================
 
     async def _auto_heat_restart(self):
         """
         Auto-restart HEAT mode if temperature drops below target.
-
-        Scenario: User manually sets HVAC to OFF, but temperature drops.
-        → Automatically switch back to HEAT mode to maintain comfort.
+        
+        NEW v1.6.0: Only restarts if HVAC was explicitly set to OFF.
+        Normal operation (+/- buttons, presets) always keeps HVAC in HEAT mode.
         """
         if self._hvac_mode == HVACMode.OFF and self._current_temp is not None:
             effective_hysteresis = self._get_effective_hysteresis()
             diff = self._target_temp - self._current_temp
 
-            # If temp drops significantly below target, auto-restart heating
             if diff > effective_hysteresis:
                 _LOGGER.warning(
-                    "%s [%s] AUTO HEAT RESTART! Temp %.2f°C < Target %.2f°C (diff=%.2f, hyst=%.2f) → Switching to HEAT",
-                    LOG_PREFIX, self.name, self._current_temp, self._target_temp, diff, effective_hysteresis
+                    "%s [%s] AUTO HEAT RESTART! Temp %.2f°C < Target %.2f°C → Switching to HEAT",
+                    LOG_PREFIX, self.name, self._current_temp, self._target_temp
                 )
                 self._hvac_mode = HVACMode.HEAT
                 self.async_write_ha_state()
@@ -426,7 +435,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     # ==================================================================================
 
     def _get_effective_hysteresis(self) -> float:
-        """Adaptív hiszterézis számítása."""
+        """Calculate effective hysteresis (adaptive or base)."""
+        # NEW v1.6.0: Underfloor heating uses NO hysteresis
+        if self._heating_mode == HEATING_MODE_UNDERFLOOR:
+            return 0.0
+
+        # Radiator mode: use adaptive or base hysteresis
         if not self._adaptive_hysteresis_enabled or self._outdoor_temp is None:
             return self._base_hysteresis
 
@@ -451,7 +465,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     # ==================================================================================
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Preset mód beállítása."""
+        """Set preset mode."""
         if preset_mode not in PRESET_MODES:
             _LOGGER.warning("%s [%s] Invalid preset: %s", LOG_PREFIX, self.name, preset_mode)
             return
@@ -459,10 +473,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         old_preset = self._preset_mode
         self._preset_mode = preset_mode
 
-        _LOGGER.info(
-            "%s [%s] Preset: %s → %s",
-            LOG_PREFIX, self.name, old_preset, preset_mode
-        )
+        _LOGGER.info("%s [%s] Preset: %s → %s", LOG_PREFIX, self.name, old_preset, preset_mode)
+
+        # NEW v1.6.0: Always ensure HVAC is in HEAT mode when changing presets
+        if self._hvac_mode == HVACMode.OFF:
+            self._hvac_mode = HVACMode.HEAT
+            _LOGGER.info("%s [%s] Auto-switched to HEAT mode", LOG_PREFIX, self.name)
 
         if preset_mode == PRESET_AUTO:
             if self._schedule:
@@ -474,7 +490,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                         timedelta(minutes=15)
                     )
             else:
-                _LOGGER.warning("%s [%s] AUTO but no schedule!", LOG_PREFIX, self.name)
+                _LOGGER.warning("%s [%s] AUTO preset but no schedule configured!", LOG_PREFIX, self.name)
 
         elif preset_mode == PRESET_MANUAL:
             if self._schedule_tracker:
@@ -501,7 +517,6 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
     @property
     def preset_modes(self) -> list[str]:
-        """Elérhető preset módok listája."""
         return PRESET_MODES
 
     # ==================================================================================
@@ -509,7 +524,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     # ==================================================================================
 
     def _apply_current_schedule_block(self):
-        """Napszak alkalmazása."""
+        """Apply current schedule block."""
         if not self._schedule or self._preset_mode != PRESET_AUTO:
             return
 
@@ -539,7 +554,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 _LOGGER.warning("%s [%s] Invalid schedule block: %s", LOG_PREFIX, self.name, e)
 
     async def _check_schedule(self, now):
-        """Schedule ellenőrzés."""
+        """Schedule check (periodic)."""
         if self._preset_mode != PRESET_AUTO:
             return
 
@@ -555,11 +570,11 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             self.async_write_ha_state()
 
     # ==================================================================================
-    # HEATING CONTROL
+    # HEATING CONTROL (v1.6.0 - Underfloor vs Radiator)
     # ==================================================================================
 
     async def _evaluate_heating(self):
-        """Fűtési logika."""
+        """Evaluate heating need."""
         if self._hvac_mode == HVACMode.OFF:
             if self._is_heating:
                 await self._set_heating(False, reason="HVAC OFF")
@@ -569,6 +584,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.debug("%s [%s] Waiting for temperature...", LOG_PREFIX, self.name)
             return
 
+        # Door/window check
         for door in self._door_sensors:
             state = self.hass.states.get(door)
             if state and state.state == "on":
@@ -580,18 +596,27 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         diff = self._target_temp - self._current_temp
 
         _LOGGER.debug(
-            "%s [%s] Evaluate: current=%.2f target=%.2f diff=%.2f hyst=%.2f",
+            "%s [%s] Evaluate: current=%.2f target=%.2f diff=%.2f hyst=%.2f mode=%s",
             LOG_PREFIX, self.name, self._current_temp, self._target_temp,
-            diff, effective_hysteresis
+            diff, effective_hysteresis, self._heating_mode
         )
 
-        if diff > effective_hysteresis:
-            await self._set_heating(True, reason=f"Needs heat (diff={diff:.2f}°C)")
-        elif diff < -effective_hysteresis:
-            await self._set_heating(False, reason=f"Too warm (diff={diff:.2f}°C)")
+        # NEW v1.6.0: Different logic for underfloor vs radiator
+        if self._heating_mode == HEATING_MODE_UNDERFLOOR:
+            # Underfloor: NO hysteresis - instant on/off
+            if self._current_temp < self._target_temp:
+                await self._set_heating(True, reason="Underfloor needs heat (no hysteresis)")
+            elif self._current_temp >= self._target_temp:
+                await self._set_heating(False, reason="Underfloor target reached (no hysteresis)")
+        else:
+            # Radiator: WITH hysteresis
+            if diff > effective_hysteresis:
+                await self._set_heating(True, reason=f"Needs heat (diff={diff:.2f}°C)")
+            elif diff < -effective_hysteresis:
+                await self._set_heating(False, reason=f"Too warm (diff={diff:.2f}°C)")
 
     async def _set_heating(self, enable: bool, reason: Optional[str] = None):
-        """Relék és kazán vezérlése."""
+        """Control relays and boiler."""
         if enable == self._is_heating:
             return
 
@@ -616,7 +641,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self.async_write_ha_state()
 
     async def _call_switch_service(self, action: str, entity_id: str):
-        """Switch service hívás."""
+        """Call switch service."""
         try:
             await self.hass.services.async_call(
                 "switch",
@@ -629,11 +654,11 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.warning("%s [%s] Failed relay control %s: %s", LOG_PREFIX, self.name, entity_id, e)
 
     # ==================================================================================
-    # THERMOSTAT INTERFACE
+    # THERMOSTAT INTERFACE (v1.6.0 - Always HEAT mode when adjusting)
     # ==================================================================================
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Hőmérséklet beállítása."""
+        """Set target temperature."""
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp is None:
             return
@@ -641,32 +666,19 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         old_target = self._target_temp
         self._target_temp = float(temp)
 
-        # Auto MANUAL váltás
+        # Auto MANUAL preset switch
         if self._preset_mode != PRESET_MANUAL:
-            _LOGGER.info(
-                "%s [%s] Manual adjustment → MANUAL preset",
-                LOG_PREFIX, self.name
-            )
+            _LOGGER.info("%s [%s] Manual adjustment → MANUAL preset", LOG_PREFIX, self.name)
             self._preset_mode = PRESET_MANUAL
 
             if self._schedule_tracker:
                 self._schedule_tracker()
                 self._schedule_tracker = None
 
-        # Auto HVAC váltás
-        if self._current_temp is not None:
-            if self._target_temp > self._current_temp and self._hvac_mode == HVACMode.OFF:
-                self._hvac_mode = HVACMode.HEAT
-                _LOGGER.info(
-                    "%s [%s] Auto HEAT (target %.1f > current %.1f)",
-                    LOG_PREFIX, self.name, self._target_temp, self._current_temp
-                )
-            elif self._target_temp < self._current_temp and self._hvac_mode == HVACMode.HEAT:
-                self._hvac_mode = HVACMode.OFF
-                _LOGGER.info(
-                    "%s [%s] Auto OFF (target %.1f < current %.1f)",
-                    LOG_PREFIX, self.name, self._target_temp, self._current_temp
-                )
+        # NEW v1.6.0: Always set to HEAT mode when adjusting temperature
+        if self._hvac_mode == HVACMode.OFF:
+            self._hvac_mode = HVACMode.HEAT
+            _LOGGER.info("%s [%s] Temperature adjusted → Auto-switched to HEAT", LOG_PREFIX, self.name)
 
         _LOGGER.info(
             "%s [%s] Target: %.1f → %.1f°C",
@@ -676,13 +688,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self.async_write_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        """HVAC mód váltás."""
+        """Set HVAC mode (explicit OFF control)."""
         old_mode = self._hvac_mode
         self._hvac_mode = hvac_mode
-        _LOGGER.info(
-            "%s [%s] HVAC: %s → %s",
-            LOG_PREFIX, self.name, old_mode, hvac_mode
-        )
+        _LOGGER.info("%s [%s] HVAC: %s → %s", LOG_PREFIX, self.name, old_mode, hvac_mode)
         await self._evaluate_heating()
         self.async_write_ha_state()
 
@@ -696,6 +705,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
     @property
     def hvac_action(self):
+        """HVAC action (off/idle/heating)."""
         if self._hvac_mode == HVACMode.OFF:
             return "off"
         return "heating" if self._is_heating else "idle"
@@ -710,9 +720,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
     @property
     def extra_state_attributes(self):
-        """Extra attribútumok."""
+        """Extra attributes."""
         attrs = {
             "preset_mode": self._preset_mode,
+            "heating_mode": self._heating_mode,
             "overheat_protection": self._overheat_temp,
             "base_hysteresis": self._base_hysteresis,
         }
