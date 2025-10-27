@@ -1,10 +1,11 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.5.0 (HA 2025.10+)
+Version: 1.5.1 (HA 2025.10+)
 Author: forreggbor
 
 NEW in v1.5.1:
 - Removed DEFAULT_AUTO_SCHEDULE (empty schedule = no default)
+- Reordered input fields for better UX
 
 NEW in v1.5.0:
 - Overheat protection setting per zone
@@ -47,7 +48,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug("[SmartHeatZones] OptionsFlow initialized for %s", config_entry.title)
 
     async def async_step_init(self, user_input=None):
-        """Main entry step - ÚJ kompakt napszak UI."""
+        """Main entry step - v1.5.1 reordered UI."""
         _LOGGER.debug("[SmartHeatZones] Entered async_step_init")
 
         if user_input is not None:
@@ -69,31 +70,17 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
             ]
 
         # ========================================================================
-        # ALAPVETŐ BEÁLLÍTÁSOK
+        # ALAPVETŐ BEÁLLÍTÁSOK - ÚJ SORREND v1.5.1
         # ========================================================================
+        # 1. Kazán főkapcsoló
+        # 2. Kültéri hőmérő szenzor
+        # 3. Zóna hőmérő szenzor
+        # 4. Zóna relék
+        # 5. Zóna ajtó/ablakérzékelők
+
         schema = vol.Schema(
             {
-                vol.Optional(
-                    CONF_SENSOR,
-                    default=self._data.get(CONF_SENSOR, "")
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-
-                vol.Optional(
-                    CONF_ZONE_RELAYS,
-                    default=self._data.get(CONF_ZONE_RELAYS, [])
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="switch", multiple=True)
-                ),
-
-                vol.Optional(
-                    CONF_DOOR_SENSORS,
-                    default=self._data.get(CONF_DOOR_SENSORS, [])
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
-                ),
-
+                # 1. Kazán főkapcsoló
                 vol.Optional(
                     CONF_BOILER_MAIN,
                     default=self._data.get(CONF_BOILER_MAIN, "")
@@ -101,6 +88,39 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                     selector.EntitySelectorConfig(domain="switch")
                 ),
 
+                # 2. Kültéri hőmérő szenzor
+                vol.Optional(
+                    CONF_OUTDOOR_SENSOR,
+                    default=self._data.get(CONF_OUTDOOR_SENSOR, "")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+
+                # 3. Zóna hőmérő szenzor
+                vol.Optional(
+                    CONF_SENSOR,
+                    default=self._data.get(CONF_SENSOR, "")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+
+                # 4. Zóna relék
+                vol.Optional(
+                    CONF_ZONE_RELAYS,
+                    default=self._data.get(CONF_ZONE_RELAYS, [])
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="switch", multiple=True)
+                ),
+
+                # 5. Zóna ajtó/ablakérzékelők
+                vol.Optional(
+                    CONF_DOOR_SENSORS,
+                    default=self._data.get(CONF_DOOR_SENSORS, [])
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
+                ),
+
+                # 6. Hiszterézis
                 vol.Optional(
                     CONF_HYSTERESIS,
                     default=self._data.get(CONF_HYSTERESIS, DEFAULT_HYSTERESIS)
@@ -115,7 +135,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         # ========================================================================
-        # ÚJ v1.5.0: VÉDELMEK ÉS ADAPTÍV VEZÉRLÉS
+        # VÉDELMEK ÉS ADAPTÍV VEZÉRLÉS
         # ========================================================================
         schema = schema.extend(
             {
@@ -131,13 +151,6 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
 
                 vol.Optional(
-                    CONF_OUTDOOR_SENSOR,
-                    default=self._data.get(CONF_OUTDOOR_SENSOR, "")
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-
-                vol.Optional(
                     CONF_ADAPTIVE_HYSTERESIS,
                     default=self._data.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
                 ): selector.BooleanSelector(),
@@ -145,16 +158,9 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         # ========================================================================
-        # NAPSZAKOK - EGYSZERŰSÍTETT UI (HA LIMITÁCIÓ MIATT)
+        # NAPSZAKOK - EGYSZERŰSÍTETT UI
         # ========================================================================
-        # FIGYELEM: HA options flow NEM támogatja a grid layout-ot!
-        # Selector-ok mindig új sorban jelennek meg.
-        # Megoldás: Kompakt címkék és leírások használata
-
         for i, block in enumerate(schedule[:4], start=1):
-            # Kompakt cím: "1. Éjszaka: 22:00-06:00 → 20°C"
-            period_summary = f"{i}. {block.get('label', 'napszak')}: {block.get('start', '00:00')[:5]}-{block.get('end', '06:00')[:5]} → {block.get('temp', 20)}°C"
-
             # Napszak címke
             schema = schema.extend({
                 vol.Optional(
@@ -223,7 +229,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
             temp = self._data.get(f"temp_{i}")
 
             if label and start and end and temp is not None:
-                # ÚJ: Csak HH:MM formátum (másodperc nélkül)
+                # Csak HH:MM formátum (másodperc nélkül)
                 start_str = str(start)[:5] if isinstance(start, str) else f"{start.hour:02d}:{start.minute:02d}"
                 end_str = str(end)[:5] if isinstance(end, str) else f"{end.hour:02d}:{end.minute:02d}"
 

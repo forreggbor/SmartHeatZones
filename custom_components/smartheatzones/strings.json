@@ -26,14 +26,90 @@
   "options": {
     "step": {
       "init": {
-        "title": "Zóna beállításai",
-        "description": "Módosítsd a fűtési zóna paramétereit.",
+        "title": "Zóna beállításai - v1.5.1",
+        "description": "Alapvető paraméterek, védelmek és napszakos ütemezés beállítása.",
         "data": {
-          "sensor_entity_id": "Hőmérő szenzor",
-          "relay_entities": "Relék (szivattyúk / szelepek)",
-          "door_sensors": "Ajtó- / ablakérzékelők",
           "boiler_main": "Kazán főkapcsoló",
-          "hysteresis": "Hiszterézis (°C)"
+          "outdoor_temp_sensor": "Kültéri hőmérő szenzor",
+          "sensor_entity_id": "Zóna hőmérő szenzor",
+          "relay_entities": "Zóna relék (szivattyúk / szelepek)",
+          "door_sensors": "Zóna ajtó- / ablakérzékelők",
+          "hysteresis": "Alap hiszterézis (°C)",
+          "overheat_protection": "Túlmelegedés védelem (°C)",
+          "adaptive_hysteresis_enabled": "Adaptív hiszterézis engedélyezése",
+          "label_1": "1. időszak neve",
+          "start_1": "1. kezdés",
+          "end_1": "1. vége",
+          "temp_1": "1. hőmérséklet",
+          "label_2": "2. időszak neve",
+          "start_2": "2. kezdés",
+          "end_2": "2. vége",
+          "temp_2": "2. hőmérséklet",
+          "label_3": "3. időszak neve",
+          "start_3": "3. kezdés",
+          "end_3": "3. vége",
+          "temp_3": "3. hőmérséklet",
+          "label_4": "4. időszak neve",
+          "start_4": "4. kezdés",
+          "end_4": "4. vége",
+          "temp_4": "4. hőmérséklet"
+        },
+        "data_description": {
+          "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
+          "outdoor_temp_sensor": "Kültéri hőmérséklet szenzor - adaptív hiszterézishez szükséges (opcionális)",
+          "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
+          "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
+          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
+          "hysteresis": "Alap kapcsolási hiszterézis - megakadályozza a gyakori be-ki kapcsolást",
+          "overheat_protection": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés (védelem)",
+          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)",
+          "label_1": "Napszak neve (pl. Éjszaka, Reggel, Nappal, Este)",
+          "start_1": "Napszak kezdete (óra:perc)",
+          "end_1": "Napszak vége (óra:perc)",
+          "temp_1": "Célhőmérséklet ebben az időszakban"
+        }
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "state": {
+        "off": "Kikapcsolva",
+        "heat": "Fűtés"
+      },
+      "state_attributes": {
+        "preset_mode": {
+          "name": "Üzemmód",
+          "state": {
+            "auto": "Automatikus",
+            "manual": "Kézi",
+            "comfort": "Komfort",
+            "eco": "Eco",
+            "away": "Távol"
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "preset_mode": {
+      "options": {
+        "auto": "Automatikus (napszak szerint)",
+        "manual": "Kézi (saját beállítás)",
+        "comfort": "Komfort (22°C)",
+        "eco": "Eco (17°C)",
+        "away": "Távol (19°C)"
+      }
+    }
+  },
+  "services": {
+    "set_preset_mode": {
+      "name": "Üzemmód beállítása",
+      "description": "Preset mód váltása (Auto, Kézi, Komfort, Eco, Távol)",
+      "fields": {
+        "preset_mode": {
+          "name": "Üzemmód",
+          "description": "Válaszd ki a kívánt preset módot"
         }
       }
     }
