@@ -1,7 +1,12 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.5.0-fixed (HA 2025.10+ compatible)
+Version: 1.5.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+FIXES in 1.5.1:
+- Schedule reload on options update (update listener in __init__.py)
+- Auto HEAT restart when temp drops below target (even if HVAC mode is OFF)
+- DEFAULT_AUTO_SCHEDULE fallback removed (empty schedule = warning only)
 
 FIXES in 1.5.0-fixed:
 - Event-based relay monitoring (instant detection, no polling delay)
@@ -69,14 +74,22 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     boiler_entity = data.get(CONF_BOILER_MAIN)
     doors = data.get(CONF_DOOR_SENSORS, [])
     hysteresis = data.get(CONF_HYSTERESIS, DEFAULT_HYSTERESIS)
+
+    # FIX v1.5.1: No default schedule fallback - warn if empty
     schedule = data.get(CONF_SCHEDULE, [])
+    if not schedule:
+        _LOGGER.warning(
+            "%s [%s] No schedule configured! Set it in Options. Auto preset will not work.",
+            LOG_PREFIX, name
+        )
+
     overheat_temp = data.get(CONF_OVERHEAT_PROTECTION, DEFAULT_OVERHEAT_TEMP)
     outdoor_sensor = data.get(CONF_OUTDOOR_SENSOR)
     adaptive_hyst = data.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
 
     _LOGGER.info(
-        "%s Creating climate entity: %s | Sensor=%s | Relays=%s | Overheat=%.1f°C",
-        LOG_PREFIX, name, sensor, relays, overheat_temp
+        "%s Creating climate entity: %s | Sensor=%s | Relays=%s | Overheat=%.1f°C | Schedule=%d blocks",
+        LOG_PREFIX, name, sensor, relays, overheat_temp, len(schedule)
     )
 
     entity = SmartHeatZoneClimate(
@@ -97,7 +110,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 
 
 class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
-    """Zóna termosztát entitás v1.5.0-fixed."""
+    """Zóna termosztát entitás v1.5.1."""
 
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
@@ -322,6 +335,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.debug("%s [%s] Sensor: %.2f°C", LOG_PREFIX, self.name, self._current_temp)
 
             await self._check_overheat_protection()
+
+            # FIX v1.5.1: Auto-restart HEAT if temp drops below target (even if HVAC mode is OFF)
+            await self._auto_heat_restart()
+
             await self._evaluate_heating()
 
         except (ValueError, TypeError) as e:
@@ -379,6 +396,30 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                     LOG_PREFIX, self.name, self._current_temp, self._overheat_temp
                 )
                 await self._set_heating(False, reason=ERR_OVERHEAT)
+
+    # ==================================================================================
+    # FIX v1.5.1: AUTO HEAT RESTART
+    # ==================================================================================
+
+    async def _auto_heat_restart(self):
+        """
+        Auto-restart HEAT mode if temperature drops below target.
+
+        Scenario: User manually sets HVAC to OFF, but temperature drops.
+        → Automatically switch back to HEAT mode to maintain comfort.
+        """
+        if self._hvac_mode == HVACMode.OFF and self._current_temp is not None:
+            effective_hysteresis = self._get_effective_hysteresis()
+            diff = self._target_temp - self._current_temp
+
+            # If temp drops significantly below target, auto-restart heating
+            if diff > effective_hysteresis:
+                _LOGGER.warning(
+                    "%s [%s] AUTO HEAT RESTART! Temp %.2f°C < Target %.2f°C (diff=%.2f, hyst=%.2f) → Switching to HEAT",
+                    LOG_PREFIX, self.name, self._current_temp, self._target_temp, diff, effective_hysteresis
+                )
+                self._hvac_mode = HVACMode.HEAT
+                self.async_write_ha_state()
 
     # ==================================================================================
     # ADAPTIVE HYSTERESIS

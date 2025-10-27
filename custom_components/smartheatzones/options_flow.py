@@ -3,6 +3,9 @@ SmartHeatZones - Options Flow
 Version: 1.5.0 (HA 2025.10+)
 Author: forreggbor
 
+NEW in v1.5.1:
+- Removed DEFAULT_AUTO_SCHEDULE (empty schedule = no default)
+
 NEW in v1.5.0:
 - Overheat protection setting per zone
 - Outdoor temperature sensor (global)
@@ -27,7 +30,6 @@ from .const import (
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
     DEFAULT_HYSTERESIS,
-    DEFAULT_AUTO_SCHEDULE,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
 )
@@ -54,7 +56,17 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
             return await self._save_and_exit()
 
         # Napszakos beállítások betöltése
-        schedule = self._data.get(CONF_SCHEDULE, DEFAULT_AUTO_SCHEDULE)
+        # FIX v1.5.1: Ha nincs schedule, használjunk üres listát (figyelmeztetés a climate.py-ban)
+        schedule = self._data.get(CONF_SCHEDULE, [])
+
+        # Ha még nincs schedule, létrehozunk egy alapértelmezett 4 üres blokkot a UI-hoz
+        if not schedule:
+            schedule = [
+                {"label": "1. napszak", "start": "00:00", "end": "06:00", "temp": 20.0},
+                {"label": "2. napszak", "start": "06:00", "end": "12:00", "temp": 21.0},
+                {"label": "3. napszak", "start": "12:00", "end": "18:00", "temp": 20.0},
+                {"label": "4. napszak", "start": "18:00", "end": "00:00", "temp": 22.0},
+            ]
 
         # ========================================================================
         # ALAPVETŐ BEÁLLÍTÁSOK
@@ -196,7 +208,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=schema,
             description_placeholders={
                 "title": self._entry.title,
-                "version": "1.5.0",
+                "version": "1.5.1",
             },
         )
 

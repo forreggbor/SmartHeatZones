@@ -1,5 +1,6 @@
 """
 SmartHeatZones - Multi-zone heating controller
+Version: 1.5.1
 """
 
 import logging
@@ -49,7 +50,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _LOGGER.info("%s %s – climate platform initialized", LOG_PREFIX, entry.title)
 
+    # FIX v1.5.1: Update listener for options changes (schedule reload)
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    _LOGGER.debug("%s Update listener registered for %s", LOG_PREFIX, entry.title)
+
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Reload entry when options change (schedule update, etc.)."""
+    _LOGGER.info("%s Reloading entry due to options update: %s", LOG_PREFIX, entry.title)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
