@@ -166,11 +166,8 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     default=DEFAULT_HEATING_MODE
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[
-                            {"value": "radiator", "label": "🔥 Radiátor"},
-                            {"value": "underfloor", "label": "🌡️ Padlófűtés"}
-                        ],
-                        mode="list"
+                        options=HEATING_MODES,
+                        mode="dropdown"
                     )
                 ),
                 vol.Optional(CONF_SENSOR): selector.EntitySelector(

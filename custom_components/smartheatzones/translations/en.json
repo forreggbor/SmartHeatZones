@@ -8,16 +8,16 @@
         "data": {
           "boiler_main": "Main boiler switch",
           "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
-          "hysteresis": "Base hysteresis",
-          "overheat_temp": "Overheat protection",
+          "hysteresis": "Base hysteresis (°C)",
+          "overheat_temp": "Overheat protection (°C)",
           "adaptive_hysteresis_enabled": "Adaptive hysteresis"
         },
         "data_description": {
           "boiler_main": "Shared main boiler switch (same for all zones)",
           "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
           "hysteresis": "Base switching hysteresis - prevents frequent cycling (radiators only)",
-          "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately",
-          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather"
+          "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately (safety)",
+          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)"
         }
       },
       "zone": {
@@ -31,10 +31,10 @@
           "door_sensors": "Door / window sensors"
         },
         "data_description": {
-          "title": "Unique name for the heating zone",
-          "heating_mode": "Radiator: uses hysteresis | Underfloor: instant on/off (due to thermal inertia)",
-          "sensor_entity_id": "Temperature sensor for this zone",
-          "relay_entities": "Zone pump/valve relay switches",
+          "title": "Unique name for the heating zone (e.g. Ground Floor, Upstairs)",
+          "heating_mode": "Select heating mode based on your zone type",
+          "sensor_entity_id": "Temperature sensor entity for this zone",
+          "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)"
         }
       }
@@ -54,7 +54,7 @@
   "options": {
     "step": {
       "common_settings": {
-        "title": "Common Settings - v1.6.0",
+        "title": "Common Settings - v{version}",
         "description": "These settings apply to all heating zones.",
         "data": {
           "boiler_main": "Main boiler switch",
@@ -72,8 +72,8 @@
         }
       },
       "zone": {
-        "title": "{title} - Settings v1.6.0",
-        "description": "{common_info}\n\n🏠 Zone-specific settings:",
+        "title": "{title} - Settings v{version}",
+        "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Common Settings (modify in: 🔧 Common Settings zone)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔥 Main boiler switch: {boiler}\n🌡️ Outdoor sensor: {outdoor}\n📊 Hysteresis: {hysteresis}°C\n🔥 Overheat protection: {overheat}°C\n🔄 Adaptive hysteresis: {adaptive}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏠 Zone-specific settings:",
         "data": {
           "heating_mode": "Heating mode",
           "sensor_entity_id": "Zone temperature sensor",
@@ -97,7 +97,7 @@
           "temp_4": "Period 4 temperature"
         },
         "data_description": {
-          "heating_mode": "Radiator: uses hysteresis | Underfloor: instant on/off (due to thermal inertia)",
+          "heating_mode": "Select heating mode based on your zone type",
           "sensor_entity_id": "Temperature sensor entity for this zone",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)",
@@ -106,6 +106,20 @@
           "end_1": "Period end time (hour:minute)",
           "temp_1": "Target temperature during this period"
         }
+      }
+    }
+  },
+  "selector": {
+    "heating_mode": {
+      "options": {
+        "radiator": "🔥 Radiator (with hysteresis)",
+        "underfloor": "🌡️ Underfloor Heating (instant switching due to thermal inertia)"
+      }
+    },
+    "adaptive": {
+      "state": {
+        "on": "ON",
+        "off": "OFF"
       }
     }
   },
@@ -133,23 +147,6 @@
             "underfloor": "Underfloor"
           }
         }
-      }
-    }
-  },
-  "selector": {
-    "preset_mode": {
-      "options": {
-        "auto": "Auto (schedule-based)",
-        "manual": "Manual (custom setting)",
-        "comfort": "Comfort (22°C)",
-        "eco": "Eco (17°C)",
-        "away": "Away (19°C)"
-      }
-    },
-    "heating_mode": {
-      "options": {
-        "radiator": "Radiator (with hysteresis)",
-        "underfloor": "Underfloor (instant switching)"
       }
     }
   },

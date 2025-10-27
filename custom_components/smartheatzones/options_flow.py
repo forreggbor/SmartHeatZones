@@ -194,10 +194,10 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": "radiator", "label": "🔥 Radiátor"},
-                            {"value": "underfloor", "label": "🌡️ Padlófűtés"}
+                            {"value": "radiator", "label": "Radiátor"},
+                            {"value": "underfloor", "label": "Padlófűtés"}
                         ],
-                        mode="list"
+                        mode="dropdown"
                     )
                 ),
 
