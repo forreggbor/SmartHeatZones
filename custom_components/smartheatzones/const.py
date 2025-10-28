@@ -115,7 +115,7 @@ STATE_IDLE = "idle"
 DEBUG_MODE = True
 
 # --- Fájl metaadatok -------------------------------------------------------------
-INTEGRATION_VERSION = "1.6.0"
+INTEGRATION_VERSION = "1.6.1"
 AUTHOR = "forreggbor"
 
 # --- Hibaüzenetek és diagnosztika ------------------------------------------------

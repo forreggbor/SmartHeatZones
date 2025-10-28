@@ -132,7 +132,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=schema,
             description_placeholders={
                 "title": self._entry.title,
-                "version": "1.6.0",
+                "version": "1.6.1",
             },
         )
 
@@ -283,7 +283,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=schema,
             description_placeholders={
                 "title": self._entry.title,
-                "version": "1.6.0",
+                "version": "1.6.1",
                 "common_info": info_text,
             },
         )
