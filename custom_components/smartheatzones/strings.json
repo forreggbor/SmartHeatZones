@@ -48,7 +48,9 @@
       "relay_required": "Legalább egy zóna relé megadása kötelező!"
     },
     "abort": {
-      "single_instance_allowed": "Ez az integráció már konfigurálva van."
+      "single_instance_allowed": "Ez az integráció már konfigurálva van.",
+      "zones_exist": "Nem törölhető! Először töröld a fűtési zónákat.",
+      "unknown": "Ismeretlen hiba történt."
     }
   },
   "options": {

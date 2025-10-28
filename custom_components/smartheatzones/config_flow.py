@@ -166,9 +166,8 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     default=DEFAULT_HEATING_MODE
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=["radiator", "underfloor"],
-                        mode="list",
-                        translation_key="heating_mode"
+                        options=HEATING_MODES,
+                        mode="dropdown"
                     )
                 ),
                 vol.Optional(CONF_SENSOR): selector.EntitySelector(

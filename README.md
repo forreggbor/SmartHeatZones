@@ -1,13 +1,14 @@
-# SmartHeatZones v1.6.0
+# SmartHeatZones v1.6.1
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
-[![GitHub Release](https://img.shields.io/github/v/release/forreggbor/SmartHeatZones?style=flat-square)](https://github.com/forreggbor/SmartHeatZones/releases/tag/1.6.0)
+[![GitHub Release](https://img.shields.io/github/v/release/forreggbor/SmartHeatZones?style=flat-square)](https://github.com/forreggbor/SmartHeatZones/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.10%2B-blue?style=flat-square)](https://www.home-assistant.io/)
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 **Author:** forreggbor  
-**Current Version:** 1.6.0  
+**Current Version:** 1.6.1  
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -186,7 +187,24 @@ SmartHeatZones uses a **hub-and-spoke architecture**:
 
 ## Installation
 
-### Method 1: Manual Installation (Recommended for v1.6.0)
+### Method 1: HACS (Recommended)
+
+1. **Add custom repository:**
+   - Open HACS in Home Assistant
+   - Click on "Integrations"
+   - Click the three dots menu (⋮) in the top right
+   - Select "Custom repositories"
+   - Add repository URL: `https://github.com/forreggbor/SmartHeatZones`
+   - Category: Integration
+   - Click "Add"
+
+2. **Install SmartHeatZones:**
+   - Search for "Smart Heat Zones" in HACS
+   - Click "Download"
+   - Select the latest version
+   - Restart Home Assistant
+
+### Method 2: Manual Installation
 
 1. **Download the integration:**
    - Download the latest release from GitHub
@@ -221,10 +239,6 @@ SmartHeatZones uses a **hub-and-spoke architecture**:
 4. **Clear browser cache:**
    - Press Ctrl+Shift+R (or Cmd+Shift+R on Mac)
    - This ensures the new UI loads correctly
-
-### Method 2: HACS (Future Support)
-
-HACS installation will be available in a future release.
 
 ### Verification
 
@@ -1076,7 +1090,47 @@ Contributions are welcome! Please:
 
 ## Changelog
 
-### v1.6.0 (Current)
+### v1.6.1 (Current - Bugfix Release)
+**Release Date:** October 28, 2025
+
+**🐛 Bug Fixes:**
+- **Critical:** Fixed common settings deletion vulnerability - now properly blocked when zones exist
+- **Critical:** Fixed deletion flow not preventing removal of common settings
+- Added proper abort message when attempting to delete common settings with active zones
+
+**🎨 Visual Improvements:**
+- Added custom icon for integration (visible in HACS and integration list)
+- Icon features thermometer, multi-zone indicators, and heating flames
+- Professional appearance in Home Assistant UI
+
+**📦 Installation:**
+- **HACS Support:** Integration now installable via HACS as custom repository
+- Verified HACS installation and update process
+- Ensured configuration preservation during HACS updates
+
+**🔒 Data Safety:**
+- Guaranteed existing configurations preserved on update from v1.6.0
+- No data loss during version migration
+- Settings remain intact after HACS updates
+
+**📝 Translation Updates:**
+- Added "zones_exist" abort reason in all languages
+- Improved error messages for common settings deletion attempts
+
+**🛠️ Technical Changes:**
+- Implemented `async_step_remove_entry` in ConfigFlow
+- Enhanced entry removal validation logic
+- Updated manifest.json to v1.6.1
+- Version strings updated across all files
+
+---
+
+### v1.6.0 (Major Update)
+**Release Date:** October 27, 2025
+
+**🎉 Breaking Changes:**
+- Common settings architecture introduced
+- Migration required from v1.5.x
 - Common settings architecture
 - Radiator vs. underfloor heating support
 - Improved HVAC OFF/Idle behavior
