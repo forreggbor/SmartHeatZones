@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.6.0 (HA 2025.10+ compatible)
+Version: 1.6.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+NEW in v1.6.1:
+- No functional changes (bugfix release for config flow)
 
 NEW in v1.6.0:
 - Common settings integration (read shared config)

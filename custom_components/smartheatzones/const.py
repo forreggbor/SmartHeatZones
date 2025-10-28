@@ -1,7 +1,13 @@
 """
 SmartHeatZones - Constants
-Version: 1.6.0 (HA 2025.10+ compatible)
+Version: 1.6.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.6.1 (BUGFIX):
+- Fixed: Common settings deletion protection
+- Added: HACS support
+- Added: Custom integration icon
+- Added: INTEGRATION_VERSION constant for UI display
 
 CHANGELOG v1.6.0 (MAJOR UPDATE):
 - Common settings zone (mandatory, non-deletable)
@@ -21,6 +27,7 @@ CHANGELOG v1.5.1:
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
+INTEGRATION_VERSION = "1.6.1"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
@@ -115,7 +122,6 @@ STATE_IDLE = "idle"
 DEBUG_MODE = True
 
 # --- Fájl metaadatok -------------------------------------------------------------
-INTEGRATION_VERSION = "1.6.1"
 AUTHOR = "forreggbor"
 
 # --- Hibaüzenetek és diagnosztika ------------------------------------------------

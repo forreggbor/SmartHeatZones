@@ -1,6 +1,12 @@
 """
 SmartHeatZones - Multi-zone heating controller
-Version: 1.6.0
+Version: 1.6.1
+
+NEW in v1.6.1 (Bugfix):
+- Fixed: Common settings deletion now properly blocked when zones exist
+- Added: async_step_remove_entry validation in ConfigFlow
+- Added: INTEGRATION_VERSION constant in const.py
+- Added: HACS support and custom icon
 
 NEW in v1.6.0:
 - Common settings validation
