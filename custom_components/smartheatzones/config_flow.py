@@ -1,6 +1,10 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.6.0
+Version: 1.7.0
+
+NEW in v1.7.0:
+- Added thermostat type field to zone creation
+- Added temperature offset field to zone creation
 
 NEW in v1.6.0:
 - Common settings flow (mandatory first step)
@@ -26,12 +30,17 @@ from .const import (
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
     CONF_HEATING_MODE,
+    CONF_THERMOSTAT_TYPE,
+    CONF_TEMP_OFFSET,
     CONF_IS_COMMON_SETTINGS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
     DEFAULT_HEATING_MODE,
+    DEFAULT_THERMOSTAT_TYPE,
+    DEFAULT_TEMP_OFFSET,
     HEATING_MODES,
+    THERMOSTAT_TYPES,
     COMMON_SETTINGS_TITLE,
     ERR_NO_COMMON_SETTINGS,
     LOG_PREFIX,
@@ -168,6 +177,25 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.SelectSelectorConfig(
                         options=HEATING_MODES,
                         mode="dropdown"
+                    )
+                ),
+                vol.Required(
+                    CONF_THERMOSTAT_TYPE,
+                    default=DEFAULT_THERMOSTAT_TYPE
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=THERMOSTAT_TYPES,
+                        mode="dropdown"
+                    )
+                ),
+                vol.Optional(
+                    CONF_TEMP_OFFSET,
+                    default=DEFAULT_TEMP_OFFSET
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0.0, max=10.0, step=0.5,
+                        unit_of_measurement="°C",
+                        mode="box"
                     )
                 ),
                 vol.Optional(CONF_SENSOR): selector.EntitySelector(

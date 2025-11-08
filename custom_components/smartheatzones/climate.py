@@ -1,7 +1,15 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.6.1 (HA 2025.10+ compatible)
+Version: 1.7.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+NEW in v1.7.0:
+- Thermostat type selection (Wall vs Radiator)
+- Temperature offset for radiator thermostats (compensates for TRV placement)
+- Adjusted target temperature calculation (_get_adjusted_target_temp method)
+- Updated heating evaluation to use adjusted targets
+- Auto heat restart uses adjusted targets
+- New entity attributes: thermostat_type, temp_offset, adjusted_target_temp
 
 NEW in v1.6.1:
 - No functional changes (bugfix release for config flow)
@@ -44,6 +52,8 @@ from .const import (
     CONF_DOOR_SENSORS,
     CONF_SCHEDULE,
     CONF_HEATING_MODE,
+    CONF_THERMOSTAT_TYPE,
+    CONF_TEMP_OFFSET,
     CONF_BOILER_MAIN,
     CONF_HYSTERESIS,
     CONF_OVERHEAT_PROTECTION,
@@ -53,8 +63,12 @@ from .const import (
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
     DEFAULT_HEATING_MODE,
+    DEFAULT_THERMOSTAT_TYPE,
+    DEFAULT_TEMP_OFFSET,
     HEATING_MODE_RADIATOR,
     HEATING_MODE_UNDERFLOOR,
+    THERMOSTAT_TYPE_WALL,
+    THERMOSTAT_TYPE_RADIATOR,
     PRESET_AUTO,
     PRESET_MANUAL,
     PRESET_COMFORT,
@@ -100,6 +114,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     relays = zone_data.get(CONF_ZONE_RELAYS, [])
     doors = zone_data.get(CONF_DOOR_SENSORS, [])
     heating_mode = zone_data.get(CONF_HEATING_MODE, DEFAULT_HEATING_MODE)
+    thermostat_type = zone_data.get(CONF_THERMOSTAT_TYPE, DEFAULT_THERMOSTAT_TYPE)
+    temp_offset = zone_data.get(CONF_TEMP_OFFSET, DEFAULT_TEMP_OFFSET)
     schedule = zone_data.get(CONF_SCHEDULE, [])
     
     if not schedule:
@@ -116,8 +132,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     adaptive_hyst = common_settings.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
 
     _LOGGER.info(
-        "%s Creating climate entity: %s | Mode=%s | Sensor=%s | Relays=%s | Schedule=%d blocks",
-        LOG_PREFIX, name, heating_mode, sensor, relays, len(schedule)
+        "%s Creating climate entity: %s | Mode=%s | ThermostatType=%s | Offset=%.1f°C | Sensor=%s | Relays=%s | Schedule=%d blocks",
+        LOG_PREFIX, name, heating_mode, thermostat_type, temp_offset, sensor, relays, len(schedule)
     )
     _LOGGER.info(
         "%s [%s] Common settings: Boiler=%s | Hyst=%.2f°C | Overheat=%.1f°C | Adaptive=%s",
@@ -128,6 +144,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         hass=hass,
         name=name,
         heating_mode=heating_mode,
+        thermostat_type=thermostat_type,
+        temp_offset=temp_offset,
         sensor_entity_id=sensor,
         relay_entities=relays,
         door_sensors=doors,
@@ -160,6 +178,8 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         hass: HomeAssistant,
         name: str,
         heating_mode: str,
+        thermostat_type: str,
+        temp_offset: float,
         sensor_entity_id: str,
         relay_entities: list[str],
         door_sensors: list[str],
@@ -177,6 +197,8 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         # Zone-specific
         self._heating_mode = heating_mode
+        self._thermostat_type = thermostat_type
+        self._temp_offset = temp_offset
         self._sensor_entity_id = sensor_entity_id
         self._relay_entities = relay_entities or []
         self._door_sensors = door_sensors or []
@@ -417,21 +439,50 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     async def _auto_heat_restart(self):
         """
         Auto-restart HEAT mode if temperature drops below target.
-        
+
         NEW v1.6.0: Only restarts if HVAC was explicitly set to OFF.
         Normal operation (+/- buttons, presets) always keeps HVAC in HEAT mode.
+
+        NEW v1.7.0: Uses adjusted target temperature.
         """
         if self._hvac_mode == HVACMode.OFF and self._current_temp is not None:
+            adjusted_target = self._get_adjusted_target_temp()
             effective_hysteresis = self._get_effective_hysteresis()
-            diff = self._target_temp - self._current_temp
+            diff = adjusted_target - self._current_temp
 
             if diff > effective_hysteresis:
                 _LOGGER.warning(
-                    "%s [%s] AUTO HEAT RESTART! Temp %.2f°C < Target %.2f°C → Switching to HEAT",
-                    LOG_PREFIX, self.name, self._current_temp, self._target_temp
+                    "%s [%s] AUTO HEAT RESTART! Temp %.2f°C < Adjusted Target %.2f°C → Switching to HEAT",
+                    LOG_PREFIX, self.name, self._current_temp, adjusted_target
                 )
                 self._hvac_mode = HVACMode.HEAT
                 self.async_write_ha_state()
+
+    # ==================================================================================
+    # TEMPERATURE OFFSET (v1.7.0 - Radiator vs Wall Thermostat)
+    # ==================================================================================
+
+    def _get_adjusted_target_temp(self) -> float:
+        """
+        Calculate adjusted target temperature based on thermostat type.
+
+        Radiator thermostats mounted on the radiator valve measure higher
+        temperatures than the actual room temperature. To compensate, we
+        add an offset to the target temperature when using radiator thermostats.
+
+        Returns:
+            Adjusted target temperature in °C
+        """
+        if self._thermostat_type == THERMOSTAT_TYPE_RADIATOR:
+            adjusted = self._target_temp + self._temp_offset
+            _LOGGER.debug(
+                "%s [%s] Adjusted target: %.1f°C (base) + %.1f°C (offset) = %.1f°C (radiator thermostat)",
+                LOG_PREFIX, self.name, self._target_temp, self._temp_offset, adjusted
+            )
+            return adjusted
+        else:
+            # Wall thermostat - no adjustment needed
+            return self._target_temp
 
     # ==================================================================================
     # ADAPTIVE HYSTERESIS
@@ -595,21 +646,23 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                     await self._set_heating(False, reason="Door/window open")
                 return
 
+        # NEW v1.7.0: Get adjusted target temperature (compensates for radiator thermostats)
+        adjusted_target = self._get_adjusted_target_temp()
         effective_hysteresis = self._get_effective_hysteresis()
-        diff = self._target_temp - self._current_temp
+        diff = adjusted_target - self._current_temp
 
         _LOGGER.debug(
-            "%s [%s] Evaluate: current=%.2f target=%.2f diff=%.2f hyst=%.2f mode=%s",
-            LOG_PREFIX, self.name, self._current_temp, self._target_temp,
-            diff, effective_hysteresis, self._heating_mode
+            "%s [%s] Evaluate: current=%.2f target=%.2f adjusted_target=%.2f diff=%.2f hyst=%.2f mode=%s thermostat=%s",
+            LOG_PREFIX, self.name, self._current_temp, self._target_temp, adjusted_target,
+            diff, effective_hysteresis, self._heating_mode, self._thermostat_type
         )
 
         # NEW v1.6.0: Different logic for underfloor vs radiator
         if self._heating_mode == HEATING_MODE_UNDERFLOOR:
             # Underfloor: NO hysteresis - instant on/off
-            if self._current_temp < self._target_temp:
+            if self._current_temp < adjusted_target:
                 await self._set_heating(True, reason="Underfloor needs heat (no hysteresis)")
-            elif self._current_temp >= self._target_temp:
+            elif self._current_temp >= adjusted_target:
                 await self._set_heating(False, reason="Underfloor target reached (no hysteresis)")
         else:
             # Radiator: WITH hysteresis
@@ -727,6 +780,9 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         attrs = {
             "preset_mode": self._preset_mode,
             "heating_mode": self._heating_mode,
+            "thermostat_type": self._thermostat_type,
+            "temp_offset": self._temp_offset,
+            "adjusted_target_temp": self._get_adjusted_target_temp(),
             "overheat_protection": self._overheat_temp,
             "base_hysteresis": self._base_hysteresis,
         }

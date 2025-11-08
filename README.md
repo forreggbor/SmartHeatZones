@@ -1,4 +1,4 @@
-# SmartHeatZones v1.6.1
+# SmartHeatZones v1.7.0
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
@@ -7,8 +7,8 @@
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-**Author:** forreggbor  
-**Current Version:** 1.6.1  
+**Author:** forreggbor
+**Current Version:** 1.7.0
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -1090,7 +1090,50 @@ Contributions are welcome! Please:
 
 ## Changelog
 
-### v1.6.1 (Current - Bugfix Release)
+### v1.7.0 (Current - Feature Release)
+**Release Date:** November 8, 2025
+
+**🎉 New Feature: Thermostat Type with Temperature Offset**
+
+**Problem Solved:**
+Radiator-mounted thermostats (TRVs - Thermostatic Radiator Valves) measure higher temperatures than the actual room temperature because they're positioned directly on the hot radiator. This causes the heating system to shut off prematurely, leaving rooms colder than desired.
+
+**Solution:**
+- **Thermostat Type Selection:** Choose between "Wall Thermostat" (accurate room measurement) or "Radiator Thermostat" (mounted on radiator)
+- **Temperature Offset:** Configurable temperature compensation (default: 3°C) that's automatically added to the target temperature when using radiator thermostats
+- **Per-Zone Configuration:** Each zone can have different thermostat types
+
+**How It Works:**
+- User sets target temperature: 21°C
+- With radiator thermostat + 3°C offset: System heats to 24°C (sensor reading)
+- Actual room temperature reaches ~21°C (desired comfort level)
+
+**Configuration:**
+- Zone Settings → "Thermostat Type": Wall / Radiator
+- Zone Settings → "Temperature Offset (°C)": 0.0 - 10.0 (default: 3.0)
+
+**📝 Changes:**
+- Added `thermostat_type` field to zone configuration (wall/radiator)
+- Added `temp_offset` field for temperature compensation (0.0-10.0°C, default 3.0°C)
+- Implemented `_get_adjusted_target_temp()` method in climate entity
+- Updated heating evaluation logic to use adjusted target temperature
+- Added new attributes to climate entity: `thermostat_type`, `temp_offset`, `adjusted_target_temp`
+- Updated all translation files (EN, HU) with new field labels and descriptions
+
+**🔧 Technical Details:**
+- Adaptive hysteresis and temperature offset work independently and complement each other
+- Adaptive hysteresis: adjusts based on outdoor temperature (external factor)
+- Temperature offset: compensates for thermostat placement (measurement accuracy)
+- Debug logging includes both target and adjusted target temperatures
+
+**⚠️ Note:**
+- Existing zones default to "Wall Thermostat" type with 0°C offset (no behavior change)
+- This feature is independent of "Heating Mode" (Radiator vs Underfloor)
+- Temperature offset only applies when thermostat type is set to "Radiator"
+
+---
+
+### v1.6.1 (Bugfix Release)
 **Release Date:** October 28, 2025
 
 **🐛 Bug Fixes:**
