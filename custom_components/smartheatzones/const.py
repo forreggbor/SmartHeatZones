@@ -1,7 +1,14 @@
 """
 SmartHeatZones - Constants
-Version: 1.6.1 (HA 2025.10+ compatible)
+Version: 1.7.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.7.0 (FEATURE RELEASE):
+- NEW: Thermostat type selection (Wall vs Radiator)
+- NEW: Temperature offset for radiator thermostats (compensates TRV measurement)
+- Added: CONF_THERMOSTAT_TYPE and CONF_TEMP_OFFSET configuration keys
+- Added: THERMOSTAT_TYPE_WALL and THERMOSTAT_TYPE_RADIATOR constants
+- Added: DEFAULT_THERMOSTAT_TYPE and DEFAULT_TEMP_OFFSET defaults
 
 CHANGELOG v1.6.1 (BUGFIX):
 - Fixed: Common settings deletion protection
@@ -27,7 +34,7 @@ CHANGELOG v1.5.1:
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.6.1"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.7.0"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
@@ -51,6 +58,8 @@ CONF_ZONE_RELAYS = "relay_entities"
 CONF_DOOR_SENSORS = "door_sensors"
 CONF_SCHEDULE = "schedule"
 CONF_HEATING_MODE = "heating_mode"  # NEW v1.6.0: radiator or underfloor
+CONF_THERMOSTAT_TYPE = "thermostat_type"  # NEW v1.7.0: wall or radiator
+CONF_TEMP_OFFSET = "temp_offset"  # NEW v1.7.0: temperature offset for radiator thermostats
 
 # Common settings config keys (v1.6.0)
 CONF_BOILER_MAIN = "boiler_main"
@@ -64,6 +73,12 @@ CONF_ADAPTIVE_HYSTERESIS = "adaptive_hysteresis_enabled"
 HEATING_MODE_RADIATOR = "radiator"
 HEATING_MODE_UNDERFLOOR = "underfloor"
 HEATING_MODES = [HEATING_MODE_RADIATOR, HEATING_MODE_UNDERFLOOR]
+
+# --- Termosztát típusok (v1.7.0) ------------------------------------------------
+
+THERMOSTAT_TYPE_WALL = "wall"
+THERMOSTAT_TYPE_RADIATOR = "radiator"
+THERMOSTAT_TYPES = [THERMOSTAT_TYPE_WALL, THERMOSTAT_TYPE_RADIATOR]
 
 # --- Preset módok (Better Thermostat kompatibilis) ------------------------------
 
@@ -97,6 +112,8 @@ DEFAULT_HYSTERESIS = 0.3
 DEFAULT_OVERHEAT_TEMP = 26.0
 DEFAULT_ADAPTIVE_HYSTERESIS = True
 DEFAULT_HEATING_MODE = HEATING_MODE_RADIATOR  # NEW v1.6.0
+DEFAULT_THERMOSTAT_TYPE = THERMOSTAT_TYPE_WALL  # NEW v1.7.0
+DEFAULT_TEMP_OFFSET = 3.0  # NEW v1.7.0: default offset for radiator thermostats
 
 # --- Adaptív hiszterézis beállítások ---------------------------------------------
 

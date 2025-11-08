@@ -26,6 +26,8 @@
         "data": {
           "title": "Zone name",
           "heating_mode": "Heating mode",
+          "thermostat_type": "Thermostat type",
+          "temp_offset": "Temperature offset (°C)",
           "sensor_entity_id": "Zone temperature sensor",
           "relay_entities": "Zone relays",
           "door_sensors": "Door / window sensors"
@@ -33,6 +35,8 @@
         "data_description": {
           "title": "Unique name for the heating zone (e.g. Ground Floor, Upstairs)",
           "heating_mode": "Select heating mode based on your zone type",
+          "thermostat_type": "Wall thermostat (accurate measurement) or radiator thermostat (measures higher temperature)",
+          "temp_offset": "Temperature compensation for radiator thermostats - added to target temperature (default: 3°C)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)"
@@ -76,6 +80,8 @@
         "description": "Configure zone-specific settings. Common settings (boiler, hysteresis, etc.) can be modified in the 🔧 Common Settings zone.",
         "data": {
           "heating_mode": "Heating mode",
+          "thermostat_type": "Thermostat type",
+          "temp_offset": "Temperature offset (°C)",
           "sensor_entity_id": "Zone temperature sensor",
           "relay_entities": "Zone relays",
           "door_sensors": "Door / window sensors",
@@ -98,6 +104,8 @@
         },
         "data_description": {
           "heating_mode": "Select heating mode based on your zone type",
+          "thermostat_type": "Wall thermostat (accurate measurement) or radiator thermostat (measures higher temperature)",
+          "temp_offset": "Temperature compensation for radiator thermostats - added to target temperature (default: 3°C)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)",
@@ -114,6 +122,12 @@
       "options": {
         "radiator": "🔥 Radiator (with hysteresis)",
         "underfloor": "🌡️ Underfloor Heating (instant switching due to thermal inertia)"
+      }
+    },
+    "thermostat_type": {
+      "options": {
+        "wall": "🏠 Wall Thermostat",
+        "radiator": "🌡️ Radiator Thermostat"
       }
     },
     "adaptive": {
@@ -145,6 +159,13 @@
           "state": {
             "radiator": "Radiator",
             "underfloor": "Underfloor"
+          }
+        },
+        "thermostat_type": {
+          "name": "Thermostat Type",
+          "state": {
+            "wall": "Wall Thermostat",
+            "radiator": "Radiator Thermostat"
           }
         }
       }

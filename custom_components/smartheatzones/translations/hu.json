@@ -26,6 +26,8 @@
         "data": {
           "title": "Zóna neve",
           "heating_mode": "Fűtési mód",
+          "thermostat_type": "Termosztát típusa",
+          "temp_offset": "Hőmérséklet eltérés (°C)",
           "sensor_entity_id": "Zóna hőmérő szenzor",
           "relay_entities": "Zóna relék",
           "door_sensors": "Ajtó / ablak érzékelők"
@@ -33,6 +35,8 @@
         "data_description": {
           "title": "A fűtési zóna egyedi neve (pl. Földszint, Emelet)",
           "heating_mode": "Válaszd ki a fűtési módot a zóna típusa alapján",
+          "thermostat_type": "Fali termosztát (pontos mérés) vagy radiátorra szerelt termosztát (magasabb hőmérsékletet mér)",
+          "temp_offset": "Hőmérséklet kompenzáció radiátor termosztátokhoz - a célhőmérséklethez hozzáadódik (alapértelmezett: 3°C)",
           "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
           "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
           "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)"
@@ -76,6 +80,8 @@
         "description": "Zóna-specifikus beállítások konfigurálása. A közös beállításokat (kazán, hiszterézis, stb.) a 🔧 Közös beállítások zónában tudod módosítani.",
         "data": {
           "heating_mode": "Fűtési mód",
+          "thermostat_type": "Termosztát típusa",
+          "temp_offset": "Hőmérséklet eltérés (°C)",
           "sensor_entity_id": "Zóna hőmérő szenzor",
           "relay_entities": "Zóna relék",
           "door_sensors": "Ajtó / ablak érzékelők",
@@ -98,6 +104,8 @@
         },
         "data_description": {
           "heating_mode": "Válaszd ki a fűtési módot a zóna típusa alapján",
+          "thermostat_type": "Fali termosztát (pontos mérés) vagy radiátorra szerelt termosztát (magasabb hőmérsékletet mér)",
+          "temp_offset": "Hőmérséklet kompenzáció radiátor termosztátokhoz - a célhőmérséklethez hozzáadódik (alapértelmezett: 3°C)",
           "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
           "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
           "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
@@ -114,6 +122,12 @@
       "options": {
         "radiator": "🔥 Radiátor (hiszterézis használata)",
         "underfloor": "🌡️ Padlófűtés (azonnali kapcsolás, hőtehetetlenség miatt)"
+      }
+    },
+    "thermostat_type": {
+      "options": {
+        "wall": "🏠 Fali termosztát",
+        "radiator": "🌡️ Radiátor termosztát"
       }
     },
     "adaptive": {
@@ -145,6 +159,13 @@
           "state": {
             "radiator": "Radiátor",
             "underfloor": "Padlófűtés"
+          }
+        },
+        "thermostat_type": {
+          "name": "Termosztát típusa",
+          "state": {
+            "wall": "Fali termosztát",
+            "radiator": "Radiátor termosztát"
           }
         }
       }

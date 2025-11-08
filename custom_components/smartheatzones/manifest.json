@@ -1,7 +1,7 @@
 {
   "domain": "smartheatzones",
   "name": "Smart Heat Zones",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "documentation": "https://github.com/forreggbor/SmartHeatZones",
   "issue_tracker": "https://github.com/forreggbor/SmartHeatZones/issues",
   "requirements": [],

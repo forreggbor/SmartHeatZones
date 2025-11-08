@@ -1,7 +1,11 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.6.1 (HA 2025.10+)
+Version: 1.7.0 (HA 2025.10+)
 Author: forreggbor
+
+NEW in v1.7.0:
+- Added thermostat type field to zone options
+- Added temperature offset field to zone options
 
 NEW in v1.6.1:
 - Uses INTEGRATION_VERSION constant for version display
@@ -28,12 +32,17 @@ from .const import (
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
     CONF_HEATING_MODE,
+    CONF_THERMOSTAT_TYPE,
+    CONF_TEMP_OFFSET,
     CONF_IS_COMMON_SETTINGS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
     DEFAULT_HEATING_MODE,
+    DEFAULT_THERMOSTAT_TYPE,
+    DEFAULT_TEMP_OFFSET,
     HEATING_MODES,
+    THERMOSTAT_TYPES,
     DATA_COMMON_SETTINGS,
     INTEGRATION_VERSION,
 )
@@ -202,6 +211,32 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                             {"value": "underfloor", "label": "Padlófűtés"}
                         ],
                         mode="dropdown"
+                    )
+                ),
+
+                # Thermostat type (NEW v1.7.0)
+                vol.Required(
+                    CONF_THERMOSTAT_TYPE,
+                    default=self._data.get(CONF_THERMOSTAT_TYPE, DEFAULT_THERMOSTAT_TYPE)
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "wall", "label": "Fali termosztát"},
+                            {"value": "radiator", "label": "Radiátor termosztát"}
+                        ],
+                        mode="dropdown"
+                    )
+                ),
+
+                # Temperature offset (NEW v1.7.0)
+                vol.Optional(
+                    CONF_TEMP_OFFSET,
+                    default=self._data.get(CONF_TEMP_OFFSET, DEFAULT_TEMP_OFFSET)
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0.0, max=10.0, step=0.5,
+                        unit_of_measurement="°C",
+                        mode="box"
                     )
                 ),
 
