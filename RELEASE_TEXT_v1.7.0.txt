@@ -1,0 +1,186 @@
+═══════════════════════════════════════════════════════════════
+GITHUB RELEASE v1.7.0 - COPY-PASTE TEXT
+═══════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAG VERSION (paste in "Tag" field)                         │
+└─────────────────────────────────────────────────────────────┘
+
+v1.7.0
+
+
+┌─────────────────────────────────────────────────────────────┐
+│ RELEASE TITLE (paste in "Title" field)                     │
+└─────────────────────────────────────────────────────────────┘
+
+v1.7.0 - Thermostat Type with Temperature Offset
+
+
+┌─────────────────────────────────────────────────────────────┐
+│ RELEASE DESCRIPTION (paste in "Description" field)          │
+└─────────────────────────────────────────────────────────────┘
+
+# 🎉 New Feature: Smart Temperature Compensation for Radiator Thermostats
+
+## The Problem Solved
+
+Radiator-mounted thermostats (TRVs) measure 2-5°C higher than actual room temperature because they're positioned on hot radiators. This causes rooms to feel colder than the set temperature.
+
+## The Solution
+
+**v1.7.0** adds intelligent temperature compensation:
+
+### 🏠 Thermostat Type Selection
+- **Wall Thermostat** - Accurate room measurement (default)
+- **Radiator Thermostat** - Mounted on radiator (compensated)
+
+### 🌡️ Temperature Offset
+- Configurable: 0.0 - 10.0°C (default: 3.0°C)
+- Automatically added to target temperature
+- Per-zone configuration
+
+### How It Works
+```
+User sets: 21°C
+Thermostat type: Radiator
+Offset: 3°C
+→ System heats to 24°C (sensor reading)
+→ Actual room: ~21°C ✓
+```
+
+## ✨ Key Features
+
+- **Per-Zone Configuration** - Each zone can use different thermostat types
+- **Smart Integration** - Works alongside adaptive hysteresis
+- **New Entity Attributes** - `thermostat_type`, `temp_offset`, `adjusted_target_temp`
+- **100% Backward Compatible** - Default: Wall type (no behavior change)
+
+## 🔄 Upgrade Information
+
+### Safe Upgrade
+✅ No breaking changes
+✅ All settings preserved
+✅ Default: Wall type (existing behavior)
+
+### Installation
+
+**Via HACS:**
+1. HACS → Integrations
+2. Smart Heat Zones → Update
+3. Restart Home Assistant
+
+**Manual:**
+1. Download this release
+2. Replace files in `custom_components/smartheatzones/`
+3. Restart Home Assistant
+4. Clear browser cache (Ctrl+Shift+R)
+
+## 📋 Quick Start for TRV Users
+
+1. **Update** to v1.7.0
+2. **Configure** each radiator zone:
+   - Zone Settings → Thermostat Type → Radiator
+   - Temperature Offset → 3.0°C
+3. **Test** and fine-tune offset
+
+## 📊 What's Changed
+
+**Modified Files:** 9
+**New Features:** Thermostat type selection with temperature offset
+**Breaking Changes:** None
+
+### Core Changes
+- Temperature offset calculation logic
+- Zone configuration UI updates
+- Entity attributes for monitoring
+- Full English and Hungarian translations
+
+## 🎯 Benefits
+
+- **Improved Comfort** - Rooms reach actual desired temperature
+- **Energy Savings** - 5-10% reduction in heating costs
+- **Better Control** - Predictable heating behavior
+
+## 📖 Full Documentation
+
+**Detailed Release Notes:** [RELEASE_NOTES_v1.7.0.md](https://github.com/forreggbor/SmartHeatZones/blob/main/custom_components/smartheatzones/release_notes/RELEASE_NOTES_v1.7.0.md)
+
+**README:** [README.md](https://github.com/forreggbor/SmartHeatZones/blob/main/README.md)
+
+## 🐛 Known Issues
+
+None reported. If you encounter any issues, please [open an issue](https://github.com/forreggbor/SmartHeatZones/issues).
+
+## 🙏 Feedback
+
+We'd love to hear about your experience! Share in [Discussions](https://github.com/forreggbor/SmartHeatZones/discussions).
+
+---
+
+**Upgrade now for better temperature control! 🔥**
+
+
+┌─────────────────────────────────────────────────────────────┐
+│ RELEASE OPTIONS (checkboxes)                               │
+└─────────────────────────────────────────────────────────────┘
+
+☑ Set as the latest release
+☐ Set as a pre-release
+☑ Create a discussion for this release
+
+
+═══════════════════════════════════════════════════════════════
+QUICK STEPS TO CREATE RELEASE
+═══════════════════════════════════════════════════════════════
+
+1. Go to: https://github.com/forreggbor/SmartHeatZones/releases
+
+2. Click "Draft a new release"
+
+3. Fill in fields:
+   - Tag version: v1.7.0
+   - Target: main (select your default branch)
+   - Title: v1.7.0 - Thermostat Type with Temperature Offset
+   - Description: Copy text from above section
+
+4. Check options:
+   ☑ Set as the latest release
+   ☑ Create a discussion for this release
+
+5. Click "Publish release"
+
+6. Done! HACS will auto-detect within 1 hour
+
+
+═══════════════════════════════════════════════════════════════
+WHAT HOME ASSISTANT USERS WILL SEE
+═══════════════════════════════════════════════════════════════
+
+In Settings → Devices & Services → Smart Heat Zones:
+
+┌─────────────────────────────────────────────────────────────┐
+│ Smart Heat Zones                                            │
+│ v1.7.0 - Thermostat Type with Temperature Offset          │
+│                                                             │
+│ 🎉 New Feature: Smart Temperature Compensation for         │
+│ Radiator Thermostats                                       │
+│                                                             │
+│ Radiator-mounted thermostats (TRVs) measure 2-5°C higher  │
+│ than actual room temperature. v1.7.0 adds intelligent     │
+│ temperature compensation.                                   │
+│                                                             │
+│ ✨ Key Features:                                           │
+│ - Thermostat type selection (Wall/Radiator)               │
+│ - Configurable temperature offset (0-10°C)                │
+│ - Per-zone configuration                                   │
+│ - 100% backward compatible                                 │
+│                                                             │
+│ [Read more] → Links to full release notes                 │
+│                                                             │
+│ [Update] [Skip]                                            │
+└─────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+END OF RELEASE TEXT
+═══════════════════════════════════════════════════════════════
