@@ -1,7 +1,15 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.7.0 (HA 2025.10+ compatible)
+Version: 1.8.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+NEW in v1.8.0:
+- Tempering heating mode - coordinated zone heating for efficiency
+- Zones can piggyback on other zones' heating when below target
+- Individual zone shutoff when target reached
+- Reduces boiler on/off cycles
+- New helper method: _is_any_other_zone_heating()
+- New entity attribute: tempering_heating_enabled
 
 NEW in v1.7.0:
 - Thermostat type selection (Wall vs Radiator)
@@ -59,9 +67,11 @@ from .const import (
     CONF_OVERHEAT_PROTECTION,
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
+    CONF_TEMPERING_HEATING,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
+    DEFAULT_TEMPERING_HEATING,
     DEFAULT_HEATING_MODE,
     DEFAULT_THERMOSTAT_TYPE,
     DEFAULT_TEMP_OFFSET,
@@ -130,14 +140,15 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     overheat_temp = common_settings.get(CONF_OVERHEAT_PROTECTION, DEFAULT_OVERHEAT_TEMP)
     outdoor_sensor = common_settings.get(CONF_OUTDOOR_SENSOR)
     adaptive_hyst = common_settings.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
+    tempering_heating = common_settings.get(CONF_TEMPERING_HEATING, DEFAULT_TEMPERING_HEATING)
 
     _LOGGER.info(
         "%s Creating climate entity: %s | Mode=%s | ThermostatType=%s | Offset=%.1f°C | Sensor=%s | Relays=%s | Schedule=%d blocks",
         LOG_PREFIX, name, heating_mode, thermostat_type, temp_offset, sensor, relays, len(schedule)
     )
     _LOGGER.info(
-        "%s [%s] Common settings: Boiler=%s | Hyst=%.2f°C | Overheat=%.1f°C | Adaptive=%s",
-        LOG_PREFIX, name, boiler_entity, hysteresis, overheat_temp, adaptive_hyst
+        "%s [%s] Common settings: Boiler=%s | Hyst=%.2f°C | Overheat=%.1f°C | Adaptive=%s | Tempering=%s",
+        LOG_PREFIX, name, boiler_entity, hysteresis, overheat_temp, adaptive_hyst, tempering_heating
     )
 
     entity = SmartHeatZoneClimate(
@@ -155,6 +166,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         overheat_temp=overheat_temp,
         outdoor_sensor=outdoor_sensor,
         adaptive_hysteresis_enabled=adaptive_hyst,
+        tempering_heating_enabled=tempering_heating,
     )
     async_add_entities([entity])
     _LOGGER.info("%s Climate entity created for %s", LOG_PREFIX, name)
@@ -189,6 +201,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         overheat_temp: float,
         outdoor_sensor: Optional[str],
         adaptive_hysteresis_enabled: bool,
+        tempering_heating_enabled: bool,
     ):
         """Initialize zone thermostat."""
         self.hass = hass
@@ -210,6 +223,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self._overheat_temp = overheat_temp
         self._outdoor_sensor = outdoor_sensor
         self._adaptive_hysteresis_enabled = adaptive_hysteresis_enabled
+        self._tempering_heating_enabled = tempering_heating_enabled
 
         # Runtime state
         self._current_temp = None
@@ -624,11 +638,41 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             self.async_write_ha_state()
 
     # ==================================================================================
+    # TEMPERING HEATING (v1.8.0)
+    # ==================================================================================
+
+    def _is_any_other_zone_heating(self) -> bool:
+        """
+        Check if any other zone (not this one) is currently heating.
+        Used for tempering heating mode to detect when to piggyback on other zones.
+
+        Returns:
+            True if at least one other zone is heating, False otherwise
+        """
+        active_zones = self.hass.data.get(DOMAIN, {}).get(DATA_ACTIVE_ZONES, {})
+
+        for zone_name, zone_data in active_zones.items():
+            # Skip this zone
+            if zone_name == self.name:
+                continue
+
+            # Check if the zone is heating
+            is_heating = zone_data.get("is_heating", False)
+            if is_heating:
+                _LOGGER.debug(
+                    "%s [%s] Tempering check: Zone '%s' is heating",
+                    LOG_PREFIX, self.name, zone_name
+                )
+                return True
+
+        return False
+
+    # ==================================================================================
     # HEATING CONTROL (v1.6.0 - Underfloor vs Radiator)
     # ==================================================================================
 
     async def _evaluate_heating(self):
-        """Evaluate heating need."""
+        """Evaluate heating need (v1.8.0 - with tempering heating support)."""
         if self._hvac_mode == HVACMode.OFF:
             if self._is_heating:
                 await self._set_heating(False, reason="HVAC OFF")
@@ -652,9 +696,9 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         diff = adjusted_target - self._current_temp
 
         _LOGGER.debug(
-            "%s [%s] Evaluate: current=%.2f target=%.2f adjusted_target=%.2f diff=%.2f hyst=%.2f mode=%s thermostat=%s",
+            "%s [%s] Evaluate: current=%.2f target=%.2f adjusted_target=%.2f diff=%.2f hyst=%.2f mode=%s thermostat=%s tempering=%s",
             LOG_PREFIX, self.name, self._current_temp, self._target_temp, adjusted_target,
-            diff, effective_hysteresis, self._heating_mode, self._thermostat_type
+            diff, effective_hysteresis, self._heating_mode, self._thermostat_type, self._tempering_heating_enabled
         )
 
         # NEW v1.6.0: Different logic for underfloor vs radiator
@@ -665,11 +709,33 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             elif self._current_temp >= adjusted_target:
                 await self._set_heating(False, reason="Underfloor target reached (no hysteresis)")
         else:
-            # Radiator: WITH hysteresis
+            # Radiator: WITH hysteresis (and optional tempering heating)
+            # Check normal heating first (below target - hysteresis)
             if diff > effective_hysteresis:
                 await self._set_heating(True, reason=f"Needs heat (diff={diff:.2f}°C)")
             elif diff < -effective_hysteresis:
                 await self._set_heating(False, reason=f"Too warm (diff={diff:.2f}°C)")
+            else:
+                # In hysteresis dead-band - check tempering heating
+                # NEW v1.8.0: Tempering heating mode
+                if self._tempering_heating_enabled:
+                    # Check if any other zone is heating
+                    any_zone_heating = self._is_any_other_zone_heating()
+
+                    if any_zone_heating and self._current_temp < adjusted_target:
+                        # Piggyback on other zone's heating
+                        await self._set_heating(True, reason=f"Tempering heat (other zone active, below target)")
+                        _LOGGER.debug(
+                            "%s [%s] Tempering heating: piggyback ON (current=%.2f < target=%.2f)",
+                            LOG_PREFIX, self.name, self._current_temp, adjusted_target
+                        )
+                    elif self._current_temp >= adjusted_target and self._is_heating:
+                        # This zone reached target - turn off even if others are heating
+                        await self._set_heating(False, reason=f"Tempering target reached")
+                        _LOGGER.debug(
+                            "%s [%s] Tempering heating: target reached (current=%.2f >= target=%.2f)",
+                            LOG_PREFIX, self.name, self._current_temp, adjusted_target
+                        )
 
     async def _set_heating(self, enable: bool, reason: Optional[str] = None):
         """Control relays and boiler."""
@@ -785,6 +851,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             "adjusted_target_temp": self._get_adjusted_target_temp(),
             "overheat_protection": self._overheat_temp,
             "base_hysteresis": self._base_hysteresis,
+            "tempering_heating_enabled": self._tempering_heating_enabled,
         }
 
         if self._adaptive_hysteresis_enabled and self._outdoor_temp is not None:

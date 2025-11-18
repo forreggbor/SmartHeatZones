@@ -1,6 +1,10 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.7.0
+Version: 1.8.0
+
+NEW in v1.8.0:
+- Added tempering heating toggle to common settings
+- Coordinated zone heating for efficiency
 
 NEW in v1.7.0:
 - Added thermostat type field to zone creation
@@ -29,6 +33,7 @@ from .const import (
     CONF_OVERHEAT_PROTECTION,
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
+    CONF_TEMPERING_HEATING,
     CONF_HEATING_MODE,
     CONF_THERMOSTAT_TYPE,
     CONF_TEMP_OFFSET,
@@ -36,6 +41,7 @@ from .const import (
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
+    DEFAULT_TEMPERING_HEATING,
     DEFAULT_HEATING_MODE,
     DEFAULT_THERMOSTAT_TYPE,
     DEFAULT_TEMP_OFFSET,
@@ -142,6 +148,10 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_ADAPTIVE_HYSTERESIS,
                     default=DEFAULT_ADAPTIVE_HYSTERESIS
+                ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_TEMPERING_HEATING,
+                    default=DEFAULT_TEMPERING_HEATING
                 ): selector.BooleanSelector(),
             }
         )
