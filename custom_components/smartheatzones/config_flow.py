@@ -92,9 +92,13 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["boiler_main"] = "boiler_required"
             
             if not errors:
+                # Clean up empty outdoor sensor (makes it truly optional)
+                if CONF_OUTDOOR_SENSOR in user_input and not user_input[CONF_OUTDOOR_SENSOR]:
+                    user_input.pop(CONF_OUTDOOR_SENSOR, None)
+
                 # Mark as common settings
                 user_input[CONF_IS_COMMON_SETTINGS] = True
-                
+
                 _LOGGER.info("%s Creating common settings entry", LOG_PREFIX)
                 return self.async_create_entry(
                     title=COMMON_SETTINGS_TITLE,

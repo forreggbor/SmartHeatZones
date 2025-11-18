@@ -109,7 +109,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(
                     CONF_OUTDOOR_SENSOR,
-                    default=self._data.get(CONF_OUTDOOR_SENSOR, "")
+                    default=self._data.get(CONF_OUTDOOR_SENSOR) if self._data.get(CONF_OUTDOOR_SENSOR) else None
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
                 ),
@@ -353,6 +353,11 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                     )
 
             self._data[CONF_SCHEDULE] = schedule
+        else:
+            # Common settings entry - clean up empty outdoor sensor
+            if CONF_OUTDOOR_SENSOR in self._data and not self._data[CONF_OUTDOOR_SENSOR]:
+                # Remove empty string outdoor sensor (makes it truly optional)
+                self._data.pop(CONF_OUTDOOR_SENSOR, None)
 
         _LOGGER.debug("[SmartHeatZones] Saving final options: %s", self._data)
 
