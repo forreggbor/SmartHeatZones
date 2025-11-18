@@ -649,16 +649,15 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         Returns:
             True if at least one other zone is heating, False otherwise
         """
-        active_zones = self.hass.data.get(DOMAIN, {}).get(DATA_ACTIVE_ZONES, {})
+        if not self._boiler:
+            return False
 
-        for zone_name, zone_data in active_zones.items():
-            # Skip this zone
-            if zone_name == self.name:
-                continue
+        # Get active zones from BoilerManager
+        active_zones = self._boiler.get_active_zones()
 
-            # Check if the zone is heating
-            is_heating = zone_data.get("is_heating", False)
-            if is_heating:
+        # Check if any zone other than this one is heating
+        for zone_name in active_zones:
+            if zone_name != self.name:
                 _LOGGER.debug(
                     "%s [%s] Tempering check: Zone '%s' is heating",
                     LOG_PREFIX, self.name, zone_name
