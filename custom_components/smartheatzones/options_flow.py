@@ -101,6 +101,17 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug("[SmartHeatZones] Entered async_step_common_settings (options)")
 
         if user_input is not None:
+            # Handle outdoor sensor removal BEFORE updating self._data
+            if CONF_OUTDOOR_SENSOR in user_input:
+                if not user_input[CONF_OUTDOOR_SENSOR]:
+                    # User removed/cleared the outdoor sensor
+                    _LOGGER.info("[SmartHeatZones] Outdoor sensor removed, disabling adaptive hysteresis")
+                    # Remove from both user_input and self._data
+                    user_input.pop(CONF_OUTDOOR_SENSOR, None)
+                    self._data.pop(CONF_OUTDOOR_SENSOR, None)
+                    # Disable adaptive hysteresis since it requires outdoor sensor
+                    user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+
             self._data.update(user_input)
             _LOGGER.info("[SmartHeatZones] Common settings options updated")
             return await self._save_and_exit()
