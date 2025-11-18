@@ -96,6 +96,11 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 if CONF_OUTDOOR_SENSOR in user_input and not user_input[CONF_OUTDOOR_SENSOR]:
                     user_input.pop(CONF_OUTDOOR_SENSOR, None)
 
+                # Disable adaptive hysteresis if no outdoor sensor configured
+                if CONF_OUTDOOR_SENSOR not in user_input:
+                    _LOGGER.info("%s No outdoor sensor configured, disabling adaptive hysteresis", LOG_PREFIX)
+                    user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+
                 # Mark as common settings
                 user_input[CONF_IS_COMMON_SETTINGS] = True
 
