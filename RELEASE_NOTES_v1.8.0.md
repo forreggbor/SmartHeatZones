@@ -183,7 +183,28 @@ Follow the same steps above and toggle to **OFF**. All zones will immediately re
 
 ## 🐛 Bug Fixes
 
-No bug fixes in this release - pure feature addition.
+### v1.7.1 Patches Included
+
+This release includes critical bugfixes from v1.7.1:
+
+**Outdoor Temperature Sensor - Truly Optional**
+- **Issue**: Outdoor sensor field required non-empty value, preventing users from saving Common Settings without selecting a sensor
+- **Root Cause**: Home Assistant EntitySelector rejects empty strings ("") as invalid
+- **Fix**: Changed default value from `""` to `None` in both config_flow.py and options_flow.py
+- **Impact**: Users can now save Common Settings without selecting an outdoor sensor
+
+**Adaptive Hysteresis Auto-Disable**
+- **Issue**: Adaptive hysteresis could be enabled without an outdoor sensor, causing errors
+- **Fix**: System now automatically disables adaptive hysteresis when outdoor sensor is not configured
+- **Locations**: Both initial setup (config_flow.py) and options editing (options_flow.py)
+- **Behavior**: When outdoor sensor is removed or not configured, adaptive hysteresis automatically turns OFF
+- **Fallback**: System uses base hysteresis (DEFAULT_HYSTERESIS = 0.3°C) when adaptive is disabled
+
+**Files Modified for Bug Fixes:**
+- `custom_components/smartheatzones/config_flow.py` - Lines 94-102
+- `custom_components/smartheatzones/options_flow.py` - Lines 112, 357-363
+
+These fixes ensure the outdoor temperature sensor is truly optional and prevent configuration errors.
 
 ---
 

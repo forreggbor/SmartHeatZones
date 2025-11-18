@@ -44,10 +44,21 @@ When enabled, zones automatically "piggyback" on the boiler when it's already ru
 - **Automatic upgrade** - Just update to v1.8.0
 - **Optional feature** - Enable when ready
 
+## 🐛 Bug Fixes (v1.7.1 Patches)
+
+**Outdoor Sensor - Truly Optional**
+- Fixed: Outdoor sensor field no longer requires a value
+- Fixed: Users can save Common Settings without selecting outdoor sensor
+
+**Adaptive Hysteresis - Auto Disable**
+- Fixed: Adaptive hysteresis automatically disables when no outdoor sensor configured
+- Fixed: Prevents errors from missing outdoor temperature data
+- Fallback: Uses base hysteresis (0.3°C) when adaptive is disabled
+
 ## 📊 Files Changed
 
 - `climate.py` - Tempering heating logic
-- `config_flow.py`, `options_flow.py` - UI integration
+- `config_flow.py`, `options_flow.py` - UI integration + bugfixes
 - `const.py` - New constants
 - All translation files - Full localization
 

@@ -146,10 +146,16 @@ Radiator thermostats mounted on radiator valves measure 2-5°C higher than the a
 - System automatically adds the offset when using radiator thermostats
 - Achieves accurate room temperature control
 
-**Bugfixes:**
-- Fixed outdoor temperature sensor to be truly optional
-- Adaptive hysteresis now auto-disables when no outdoor sensor is configured
-- Improved entity selector handling for optional fields
+**Bugfixes (v1.7.1):**
+- **Fixed outdoor temperature sensor** - Now truly optional; users can save Common Settings without selecting a sensor
+- **Fixed adaptive hysteresis** - Automatically disables when no outdoor sensor is configured
+- **Improved entity selector** - Changed default from empty string to None to satisfy Home Assistant requirements
+- **Auto-fallback** - System uses base hysteresis (0.3°C) when adaptive is disabled
+
+**Technical Details:**
+- EntitySelector in Home Assistant rejects empty strings as invalid values
+- System now auto-disables adaptive hysteresis when outdoor sensor is removed or not configured
+- Fixes applied to both initial setup (config_flow.py) and options editing (options_flow.py)
 
 ---
 
