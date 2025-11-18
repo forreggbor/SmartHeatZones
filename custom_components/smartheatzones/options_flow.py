@@ -1,7 +1,11 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.7.0 (HA 2025.10+)
+Version: 1.8.0 (HA 2025.10+)
 Author: forreggbor
+
+NEW in v1.8.0:
+- Added tempering heating toggle to common settings options
+- Display tempering heating status in zone info panel
 
 NEW in v1.7.0:
 - Added thermostat type field to zone options
@@ -31,6 +35,7 @@ from .const import (
     CONF_OVERHEAT_PROTECTION,
     CONF_OUTDOOR_SENSOR,
     CONF_ADAPTIVE_HYSTERESIS,
+    CONF_TEMPERING_HEATING,
     CONF_HEATING_MODE,
     CONF_THERMOSTAT_TYPE,
     CONF_TEMP_OFFSET,
@@ -38,6 +43,7 @@ from .const import (
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
     DEFAULT_ADAPTIVE_HYSTERESIS,
+    DEFAULT_TEMPERING_HEATING,
     DEFAULT_HEATING_MODE,
     DEFAULT_THERMOSTAT_TYPE,
     DEFAULT_TEMP_OFFSET,
@@ -61,6 +67,7 @@ def _get_common_settings_data(hass):
             "hysteresis": data.get(CONF_HYSTERESIS, DEFAULT_HYSTERESIS),
             "overheat": data.get(CONF_OVERHEAT_PROTECTION, DEFAULT_OVERHEAT_TEMP),
             "adaptive": data.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS),
+            "tempering": data.get(CONF_TEMPERING_HEATING, DEFAULT_TEMPERING_HEATING),
         }
     return None
 
@@ -137,6 +144,10 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_ADAPTIVE_HYSTERESIS,
                     default=self._data.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
                 ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_TEMPERING_HEATING,
+                    default=self._data.get(CONF_TEMPERING_HEATING, DEFAULT_TEMPERING_HEATING)
+                ): selector.BooleanSelector(),
             }
         )
 
@@ -182,6 +193,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                 f"📊 Hiszterézis: {common_info['hysteresis']}°C\n"
                 f"🔥 Túlmelegedés védelem: {common_info['overheat']}°C\n"
                 f"🔄 Adaptív hiszterézis: {'BE' if common_info['adaptive'] else 'KI'}\n"
+                f"♨️  Melegítő fűtés: {'BE' if common_info['tempering'] else 'KI'}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             )
         else:

@@ -10,14 +10,16 @@
           "outdoor_temp_sensor": "Kültéri hőmérő szenzor (opcionális)",
           "hysteresis": "Alap hiszterézis (°C)",
           "overheat_temp": "Túlmelegedés védelem (°C)",
-          "adaptive_hysteresis_enabled": "Adaptív hiszterézis"
+          "adaptive_hysteresis_enabled": "Adaptív hiszterézis",
+          "tempering_heating_enabled": "Melegítő fűtés"
         },
         "data_description": {
           "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
           "outdoor_temp_sensor": "Kültéri hőmérséklet szenzor - adaptív hiszterézishez szükséges (opcionális)",
           "hysteresis": "Alap kapcsolási hiszterézis - megakadályozza a gyakori be-ki kapcsolást (csak radiátorokhoz)",
           "overheat_temp": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés (védelem)",
-          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)"
+          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)",
+          "tempering_heating_enabled": "Koordinált fűtés: ha bármely zóna fűt, akkor minden célhőmérséklet alatti zónát is felfűt (kevesebb be-ki kapcsolás)"
         }
       },
       "zone": {
@@ -65,14 +67,16 @@
           "outdoor_temp_sensor": "Kültéri hőmérő szenzor",
           "hysteresis": "Alap hiszterézis (°C)",
           "overheat_temp": "Túlmelegedés védelem (°C)",
-          "adaptive_hysteresis_enabled": "Adaptív hiszterézis"
+          "adaptive_hysteresis_enabled": "Adaptív hiszterézis",
+          "tempering_heating_enabled": "Melegítő fűtés"
         },
         "data_description": {
           "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
           "outdoor_temp_sensor": "Kültéri hőmérséklet szenzor - adaptív hiszterézishez szükséges (opcionális)",
           "hysteresis": "Alap kapcsolási hiszterézis - csak radiátorokhoz (padlófűtésnél nincs hiszterézis)",
           "overheat_temp": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés (védelem)",
-          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)"
+          "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)",
+          "tempering_heating_enabled": "Koordinált fűtés: ha bármely zóna fűt, akkor minden célhőmérséklet alatti zónát is felfűt (kevesebb be-ki kapcsolás)"
         }
       },
       "zone": {

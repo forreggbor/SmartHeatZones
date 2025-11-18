@@ -1,4 +1,4 @@
-# SmartHeatZones v1.7.0
+# SmartHeatZones v1.8.0
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 **Author:** forreggbor
-**Current Version:** 1.7.0
+**Current Version:** 1.8.0
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -17,6 +17,8 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [What's New in v1.8.0](#whats-new-in-v180)
+- [What's New in v1.7.0](#whats-new-in-v170)
 - [What's New in v1.6.0](#whats-new-in-v160)
 - [Architecture](#architecture)
 - [Installation](#installation)
@@ -67,8 +69,10 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 - **Multiple relays per zone** - Control pumps, valves, or multiple heating circuits
 
 ### 🔥 Intelligent Heating Control
+- **Tempering heating mode** - Coordinated zone heating for improved efficiency (v1.8.0)
 - **Hysteresis-based control** - Prevents relay chattering and extends equipment life
 - **Adaptive hysteresis** - Automatically adjusts based on outdoor temperature
+- **Thermostat type compensation** - Automatic temperature offset for radiator thermostats (v1.7.0)
 - **Overheat protection** - Emergency shutdown at configurable temperature limit
 - **Door/window detection** - Automatically pauses heating when windows open
 - **Coordinated boiler management** - Shared boiler stays on while any zone needs heat
@@ -92,6 +96,60 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 - **Debug logging** - Comprehensive logging for troubleshooting
 - **State restoration** - Resumes operation after HA restart
 - **Better Thermostat compatible** - Works with existing automations
+
+---
+
+## What's New in v1.8.0
+
+### 🎉 New Feature: Tempering Heating Mode
+
+Version 1.8.0 introduces **Tempering Heating** - an intelligent coordinated zone heating system that significantly improves efficiency by reducing boiler on/off cycles while maintaining individual zone control.
+
+**What is Tempering Heating?**
+
+Tempering heating allows zones to "piggyback" on the boiler when it's already running for other zones. When enabled:
+- If ANY zone turns on its heating (temperature falls below target - hysteresis)
+- The system automatically turns on heating in ALL zones where current temperature < target temperature
+- Each zone still maintains independent control and turns off when it reaches its target
+- The boiler only turns off when all zones are satisfied
+
+**Benefits:**
+- ⚡ **Reduced boiler cycling** - Fewer on/off cycles extend boiler life
+- 💰 **Improved efficiency** - Takes advantage of already-heated boiler water
+- 🏠 **Better comfort** - All zones gradually warm up together
+- 🎯 **Individual control** - Each zone still stops at its own target temperature
+
+**How to Enable:**
+1. Go to **Common Settings** in the SmartHeatZones integration
+2. Toggle **Tempering Heating** to ON
+3. All zones will now coordinate their heating automatically
+
+**Note:** Tempering heating is OFF by default to maintain backward compatibility.
+
+---
+
+## What's New in v1.7.0
+
+### 🎉 New Feature: Thermostat Type & Temperature Offset
+
+Version 1.7.0 adds support for **radiator thermostats (TRVs)** with automatic temperature compensation:
+
+**What's New:**
+- **Thermostat Type Selection** - Choose between Wall or Radiator thermostat for each zone
+- **Temperature Offset** - Configurable offset (default 3°C) for radiator thermostats
+- **Automatic Compensation** - System automatically adjusts target temperatures for TRVs
+
+**Why This Matters:**
+
+Radiator thermostats mounted on radiator valves measure 2-5°C higher than the actual room temperature because they're close to the heat source. With this update:
+- Set your desired room temperature (e.g., 22°C)
+- System automatically adds the offset when using radiator thermostats
+- Achieves accurate room temperature control
+
+**Bugfixes:**
+- Fixed outdoor temperature sensor to be truly optional
+- Adaptive hysteresis now auto-disables when no outdoor sensor is configured
+- Improved entity selector handling for optional fields
 
 ---
 
