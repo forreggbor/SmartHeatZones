@@ -10,14 +10,16 @@
           "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
           "hysteresis": "Base hysteresis (°C)",
           "overheat_temp": "Overheat protection (°C)",
-          "adaptive_hysteresis_enabled": "Adaptive hysteresis"
+          "adaptive_hysteresis_enabled": "Adaptive hysteresis",
+          "tempering_heating_enabled": "Tempering heating"
         },
         "data_description": {
           "boiler_main": "Shared main boiler switch (same for all zones)",
           "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
           "hysteresis": "Base switching hysteresis - prevents frequent cycling (radiators only)",
           "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately (safety)",
-          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)"
+          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)",
+          "tempering_heating_enabled": "Coordinated heating: when any zone heats, all zones below target also heat up (fewer on/off cycles)"
         }
       },
       "zone": {
@@ -65,14 +67,16 @@
           "outdoor_temp_sensor": "Outdoor temperature sensor",
           "hysteresis": "Base hysteresis (°C)",
           "overheat_temp": "Overheat protection (°C)",
-          "adaptive_hysteresis_enabled": "Adaptive hysteresis"
+          "adaptive_hysteresis_enabled": "Adaptive hysteresis",
+          "tempering_heating_enabled": "Tempering heating"
         },
         "data_description": {
           "boiler_main": "Shared main boiler switch (same for all zones)",
           "outdoor_temp_sensor": "Outdoor temperature sensor - required for adaptive hysteresis (optional)",
           "hysteresis": "Base switching hysteresis - radiators only (underfloor has no hysteresis)",
           "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately (safety)",
-          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)"
+          "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)",
+          "tempering_heating_enabled": "Coordinated heating: when any zone heats, all zones below target also heat up (fewer on/off cycles)"
         }
       },
       "zone": {
