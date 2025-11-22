@@ -1,0 +1,395 @@
+# SmartHeatZones - Phase 2 Lovelace Dashboard Cards
+# These cards build on Phase 1 - add them to your existing dashboard
+
+# ==========================================================================
+# CARD 6: PIGGYBACK HEATING PERFORMANCE
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # ⚡ Piggyback Heating Performance
+
+  # Main piggyback stats
+  - type: entities
+    title: Piggyback Statistics
+    entities:
+      - entity: counter.piggyback_events_today
+        name: Piggyback Events Today
+        icon: mdi:lightning-bolt
+
+      - entity: sensor.smartheatzones_piggyback_success_rate
+        name: Success Rate
+        icon: mdi:percent
+
+      - entity: sensor.smartheatzones_piggyback_energy_saved
+        name: Energy Saved (Estimated)
+        icon: mdi:leaf
+        secondary_info: attribute
+        attribute: estimated_savings
+
+      - type: divider
+
+      - entity: counter.boiler_cycles_today
+        name: Total Boiler Cycles
+        icon: mdi:counter
+
+  # Piggyback gauge
+  - type: gauge
+    entity: sensor.smartheatzones_piggyback_success_rate
+    name: Piggyback Success Rate
+    min: 0
+    max: 100
+    severity:
+      green: 80
+      yellow: 50
+      red: 0
+    needle: true
+
+  # Bar chart showing piggyback vs normal starts
+  - type: custom:bar-card
+    entities:
+      - entity: counter.piggyback_events_today
+        name: Piggyback Starts
+        icon: mdi:lightning-bolt
+        color: '#66BB6A'
+      - entity: counter.boiler_cycles_today
+        name: Total Cycles
+        icon: mdi:counter
+        color: '#FFA726'
+    title: Heating Starts Breakdown
+    unit_of_measurement: events
+    height: 40px
+    positions:
+      icon: inside
+      name: inside
+      value: inside
+
+# ==========================================================================
+# CARD 7: ENERGY EFFICIENCY SCORE
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 🏆 Energy Efficiency Score
+
+  # Main efficiency score
+  - type: gauge
+    entity: sensor.smartheatzones_efficiency_score
+    name: Efficiency Score
+    min: 0
+    max: 100
+    severity:
+      green: 90
+      yellow: 75
+      red: 0
+    needle: true
+    segments:
+      - from: 0
+        color: '#EF5350'
+      - from: 60
+        color: '#FFA726'
+      - from: 75
+        color: '#66BB6A'
+      - from: 90
+        color: '#4CAF50'
+
+  # Score details
+  - type: entities
+    entities:
+      - entity: sensor.smartheatzones_efficiency_score
+        name: Overall Score
+        icon: mdi:star
+        secondary_info: attribute
+        attribute: rating
+
+      - type: divider
+
+      - type: attribute
+        entity: sensor.smartheatzones_efficiency_score
+        attribute: breakdown
+        name: Score Breakdown
+
+      - type: divider
+
+      - entity: binary_sensor.smartheatzones_high_efficiency
+        name: High Efficiency Mode
+        icon: mdi:leaf
+
+      - entity: binary_sensor.smartheatzones_adaptive_hysteresis_active
+        name: Adaptive Hysteresis Active
+        icon: mdi:cog
+
+  # Star rating visual
+  - type: markdown
+    content: >
+      {% set score = states('sensor.smartheatzones_efficiency_score') | int(0) %}
+      {% set stars = (score / 20) | round(0, 'floor') | int %}
+      <center>
+      <h2>
+      {% for i in range(stars) %}⭐{% endfor %}{% for i in range(5 - stars) %}☆{% endfor %}
+      </h2>
+      <p><b>{{ state_attr('sensor.smartheatzones_efficiency_score', 'rating') }}</b></p>
+      </center>
+
+# ==========================================================================
+# CARD 8: WEEKLY/MONTHLY COMPARISON
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 📊 Heating Time Comparison
+
+  # This week vs this month
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: statistic
+        entity: sensor.smartheatzones_heating_this_week
+        period:
+          calendar:
+            period: week
+        stat_type: change
+        name: This Week
+        icon: mdi:calendar-week
+
+      - type: statistic
+        entity: sensor.smartheatzones_heating_this_month
+        period:
+          calendar:
+            period: month
+        stat_type: change
+        name: This Month
+        icon: mdi:calendar-month
+
+  # Bar comparison per zone (weekly)
+  - type: custom:bar-card
+    entities:
+      - entity: sensor.living_room_heating_weekly
+        name: Living Room
+        icon: mdi:sofa
+        color: '#66BB6A'
+      - entity: sensor.bedroom_heating_weekly
+        name: Bedroom
+        icon: mdi:bed
+        color: '#FFA726'
+      - entity: sensor.kitchen_heating_weekly
+        name: Kitchen
+        icon: mdi:silverware-fork-knife
+        color: '#AB47BC'
+      - entity: sensor.bathroom_heating_weekly
+        name: Bathroom
+        icon: mdi:shower
+        color: '#EF5350'
+    title: Weekly Heating Time (hours)
+    unit_of_measurement: hours
+    height: 40px
+    max: 50
+    positions:
+      icon: inside
+      name: inside
+      value: inside
+
+  # ApexCharts - Weekly trend
+  - type: custom:apexcharts-card
+    graph_span: 7d
+    header:
+      show: true
+      title: 7-Day Heating Trend
+    series:
+      - entity: sensor.smartheatzones_total_heating_time_today
+        name: Daily Total
+        type: column
+        group_by:
+          func: last
+          duration: 1d
+    apex_config:
+      chart:
+        height: 250px
+      yaxis:
+        - decimalsInFloat: 1
+
+# ==========================================================================
+# CARD 9: COST ESTIMATION
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 💰 Energy Cost Estimation
+
+  # Cost summary cards
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: statistic
+        entity: sensor.smartheatzones_energy_cost_today
+        name: Today
+        icon: mdi:currency-eur
+
+      - type: statistic
+        entity: sensor.smartheatzones_energy_cost_week
+        name: This Week
+        icon: mdi:currency-eur
+
+      - type: statistic
+        entity: sensor.smartheatzones_energy_cost_month
+        name: This Month
+        icon: mdi:currency-eur
+
+  # Cost details
+  - type: entities
+    title: Cost Breakdown
+    entities:
+      - entity: sensor.smartheatzones_energy_cost_today
+        name: Today's Cost
+        icon: mdi:cash
+
+      - entity: sensor.smartheatzones_energy_cost_today
+        name: Energy Consumed
+        icon: mdi:lightning-bolt
+        secondary_info: attribute
+        attribute: energy_consumed
+
+      - type: divider
+
+      - entity: sensor.smartheatzones_energy_cost_month
+        name: Monthly Cost
+        icon: mdi:calendar-month
+
+      - type: attribute
+        entity: sensor.smartheatzones_energy_cost_month
+        attribute: monthly_projection
+        name: Projected Month Total
+
+      - type: divider
+
+      - entity: input_number.smartheatzones_average_power
+        name: Average Power Setting
+        icon: mdi:lightning-bolt
+
+      - entity: input_number.smartheatzones_cost_per_kwh
+        name: Cost per kWh
+        icon: mdi:currency-eur
+
+  # Monthly cost trend
+  - type: custom:apexcharts-card
+    graph_span: 30d
+    header:
+      show: true
+      title: Daily Cost Trend (30 Days)
+    series:
+      - entity: sensor.smartheatzones_energy_cost_today
+        name: Daily Cost
+        type: column
+        group_by:
+          func: last
+          duration: 1d
+    apex_config:
+      chart:
+        height: 250px
+      yaxis:
+        - decimalsInFloat: 2
+          title:
+            text: "Cost (€)"
+
+# ==========================================================================
+# CARD 10: COMFORT ANALYTICS
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 🏠 Comfort Analytics
+
+  # Comfort score gauge
+  - type: gauge
+    entity: sensor.smartheatzones_comfort_score
+    name: Comfort Score
+    min: 0
+    max: 100
+    severity:
+      green: 90
+      yellow: 75
+      red: 0
+    needle: true
+
+  # Comfort details
+  - type: entities
+    title: Comfort Status
+    entities:
+      - entity: sensor.smartheatzones_comfort_score
+        name: Overall Comfort
+        icon: mdi:home-thermometer
+        secondary_info: attribute
+        attribute: status
+
+      - type: divider
+
+      - entity: sensor.smartheatzones_living_room_deviation
+        name: Living Room
+        icon: mdi:sofa
+
+      - entity: sensor.smartheatzones_bedroom_deviation
+        name: Bedroom
+        icon: mdi:bed
+
+      - entity: sensor.smartheatzones_kitchen_deviation
+        name: Kitchen
+        icon: mdi:silverware-fork-knife
+
+      - entity: sensor.smartheatzones_bathroom_deviation
+        name: Bathroom
+        icon: mdi:shower
+
+  # Deviation chart
+  - type: custom:bar-card
+    entities:
+      - entity: sensor.smartheatzones_living_room_deviation
+        name: Living Room
+        color: '#66BB6A'
+      - entity: sensor.smartheatzones_bedroom_deviation
+        name: Bedroom
+        color: '#FFA726'
+      - entity: sensor.smartheatzones_kitchen_deviation
+        name: Kitchen
+        color: '#AB47BC'
+      - entity: sensor.smartheatzones_bathroom_deviation
+        name: Bathroom
+        color: '#EF5350'
+    title: Temperature Deviation from Target
+    unit_of_measurement: "°C"
+    height: 40px
+    min: -2
+    max: 2
+    positions:
+      icon: inside
+      name: inside
+      value: inside
+
+# ==========================================================================
+# COMBINED PHASE 2 DASHBOARD VIEW
+# ==========================================================================
+
+# To create a complete Phase 2 dashboard view, add this to your Lovelace config:
+#
+# views:
+#   - title: SmartHeatZones Analytics
+#     icon: mdi:chart-line
+#     path: smartheatzones_analytics
+#     type: sidebar
+#     cards:
+#       - [Insert CARD 6 - Piggyback Performance]
+#       - [Insert CARD 7 - Efficiency Score]
+#       - [Insert CARD 8 - Weekly/Monthly Comparison]
+#       - [Insert CARD 9 - Cost Estimation]
+#       - [Insert CARD 10 - Comfort Analytics]

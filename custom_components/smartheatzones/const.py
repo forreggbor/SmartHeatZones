@@ -1,7 +1,16 @@
 """
 SmartHeatZones - Constants
-Version: 1.8.1 (HA 2025.10+ compatible)
+Version: 1.9.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.9.0 (FEATURE RELEASE):
+- NEW: Complete Lovelace Dashboard (Phase 1) with system monitoring
+- NEW: Template sensors for heating time tracking and statistics
+- NEW: History stats sensors for daily/weekly/monthly tracking
+- NEW: Multi-zone temperature graphs with ApexCharts integration
+- NEW: Boiler and zone activity timeline visualization
+- NEW: Daily heating statistics with bar chart comparisons
+- NEW: Comprehensive installation guide and documentation
 
 CHANGELOG v1.8.1 (FEATURE + BUGFIX):
 - NEW: Piggyback heating - when boiler turns on, all zones with temp < target turn on immediately
@@ -42,7 +51,7 @@ CHANGELOG v1.5.1:
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.8.1"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.9.0"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 

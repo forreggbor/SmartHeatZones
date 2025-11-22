@@ -1,4 +1,4 @@
-# SmartHeatZones v1.8.1
+# SmartHeatZones v1.9.0
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 **Author:** forreggbor
-**Current Version:** 1.8.1
+**Current Version:** 1.9.0
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -17,7 +17,11 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [What's New in v1.9.0](#whats-new-in-v190)
 - [What's New in v1.8.1](#whats-new-in-v181)
+- [What's New in v1.8.0](#whats-new-in-v180)
+- [What's New in v1.7.0](#whats-new-in-v170)
+- [What's New in v1.6.0](#whats-new-in-v160)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Initial Setup](#initial-setup)
@@ -95,6 +99,53 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 
 ---
 
+## What's New in v1.9.0
+
+### 📊 NEW: Complete Lovelace Dashboard (Phase 1 + Phase 2)
+
+**Version 1.9.0 introduces a comprehensive monitoring dashboard** with real-time statistics, graphs, and advanced analytics for your heating system!
+
+#### Phase 1: Core Monitoring Features
+- **System Status Overview** - Real-time boiler status, active zones, outdoor temperature
+- **Daily Heating Statistics** - Per-zone heating time with bar chart comparisons
+- **Temperature Graphs** - Multi-zone temperature trends with ApexCharts
+- **Boiler Timeline** - Visual activity timeline for boiler and all zones
+- **Zone Details** - Individual thermostat controls and statistics
+- **Template Sensors** - 20+ new sensors for tracking metrics
+- **History Stats** - Daily/weekly/monthly heating time tracking
+
+#### Phase 2: Advanced Analytics Features
+- **⚡ Piggyback Heating Performance** - Track success rate and energy savings from piggyback heating
+- **🏆 Energy Efficiency Score** - 0-100 scoring system with star ratings and improvement tips
+- **📊 Weekly/Monthly Comparison** - Historical trend analysis with per-zone breakdown
+- **💰 Cost Estimation** - Energy cost tracking with daily/weekly/monthly projections
+- **🏠 Comfort Analytics** - Temperature deviation tracking and comfort scoring (0-100%)
+
+#### What You Get (10 Cards Total)
+```
+Phase 1 Cards (Core Monitoring):
+📊 System Status Card     - Active zones, boiler cycles, total heating time
+📈 Statistics Card        - Heating time per zone, averages, totals
+🔥 Timeline Card          - 24h visual timeline of all heating activity
+🌡️ Temperature Graph     - All zones + outdoor temperature trends
+🏠 Zone Details          - Individual controls with deviation tracking
+
+Phase 2 Cards (Advanced Analytics):
+⚡ Piggyback Performance - Success rate, events, energy savings estimation
+🏆 Efficiency Score      - 0-100 score with breakdown and star rating
+📊 Weekly/Monthly Stats  - Comparison charts and trend graphs
+💰 Cost Estimation       - Daily/weekly/monthly costs and projections
+🏠 Comfort Analytics     - Comfort score and per-zone deviations
+```
+
+#### Installation
+- **Phase 1:** See `/docs/lovelace/PHASE1_INSTALLATION_GUIDE.md`
+- **Phase 2:** See `/docs/lovelace/PHASE2_INSTALLATION_GUIDE.md`
+
+Required HACS cards: ApexCharts Card, Bar Card (optional)
+
+---
+
 ## What's New in v1.8.1
 
 ### 🐛 Bugfix: Outdoor Sensor Now Truly Optional
@@ -121,6 +172,73 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 
 ---
 
+## What's New in v1.8.0
+
+### 🎉 New Feature: Tempering Heating Mode
+
+Version 1.8.0 introduces **Tempering Heating** - an intelligent coordinated zone heating system that significantly improves efficiency by reducing boiler on/off cycles while maintaining individual zone control.
+
+**What is Tempering Heating?**
+
+Tempering heating allows zones to "piggyback" on the boiler when it's already running for other zones. When enabled:
+
+- If ANY zone turns on its heating (temperature falls below target - hysteresis)
+- The system automatically turns on heating in ALL zones where current temperature < target temperature
+- Each zone still maintains independent control and turns off when it reaches its target
+- The boiler only turns off when all zones are satisfied
+
+**Benefits:**
+
+- ⚡ **Reduced boiler cycling** - Fewer on/off cycles extend boiler life
+- 💰 **Improved efficiency** - Takes advantage of already-heated boiler water
+- 🏠 **Better comfort** - All zones gradually warm up together
+- 🎯 **Individual control** - Each zone still stops at its own target temperature
+
+**How to Enable:**
+
+1. Go to **Common Settings** in the SmartHeatZones integration
+2. Toggle **Tempering Heating** to ON
+3. All zones will now coordinate their heating automatically
+
+**Note:** Tempering heating is OFF by default to maintain backward compatibility.
+
+---
+
+## What's New in v1.7.0
+
+### 🎉 New Feature: Thermostat Type & Temperature Offset
+
+Version 1.7.0 adds support for **radiator thermostats (TRVs)** with automatic temperature compensation:
+
+**What's New:**
+
+- **Thermostat Type Selection** - Choose between Wall or Radiator thermostat for each zone
+- **Temperature Offset** - Configurable offset (default 3°C) for radiator thermostats
+- **Automatic Compensation** - System automatically adjusts target temperatures for TRVs
+
+**Why This Matters:**
+
+Radiator thermostats mounted on radiator valves measure 2-5°C higher than the actual room temperature because they're close to the heat source. With this update:
+
+- Set your desired room temperature (e.g., 22°C)
+- System automatically adds the offset when using radiator thermostats
+- Achieves accurate room temperature control
+
+**Bugfixes (v1.7.1):**
+
+- **Fixed outdoor temperature sensor** - Now truly optional; users can save Common Settings without selecting a sensor
+- **Fixed adaptive hysteresis** - Automatically disables when no outdoor sensor is configured
+- **Improved entity selector** - Changed default from empty string to None to satisfy Home Assistant requirements
+- **Auto-fallback** - System uses base hysteresis (0.3°C) when adaptive is disabled
+
+**Technical Details:**
+
+- EntitySelector in Home Assistant rejects empty strings as invalid values
+- System now auto-disables adaptive hysteresis when outdoor sensor is removed or not configured
+- Fixes applied to both initial setup (config_flow.py) and options editing (options_flow.py)
+
+---
+
 ## What's New in v1.6.0
 
 ### 🎉 Major Update: Common Settings Architecture
@@ -128,6 +246,7 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 **Version 1.6.0 introduces a completely redesigned configuration system** that significantly improves usability and reduces redundancy.
 
 #### Common Settings Zone
+
 - **Mandatory first step** - Create common settings before adding heating zones
 - **Shared configuration** - Boiler switch, hysteresis, overheat protection configured once
 - **Centralized management** - Modify global settings in one place
@@ -135,24 +254,28 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 - **Visual feedback** - Zone settings display current common settings
 
 #### Heating Type Support
+
 - **Radiator mode** - Uses hysteresis for stable temperature control
 - **Underfloor heating mode** - Instant on/off due to thermal inertia
 - **Per-zone configuration** - Mix radiators and underfloor heating in same system
 - **Optimized control logic** - Different algorithms for each heating type
 
 #### Improved HVAC Behavior
+
 - **Better OFF vs. Idle distinction** - OFF only when explicitly selected
 - **Auto-HEAT mode** - Temperature adjustments automatically enable heating
 - **Preset mode improvements** - Cleaner state transitions
 - **Temperature safety** - Auto-restart if temperature drops dangerously low
 
 #### Enhanced User Interface
+
 - **Radio button selectors** - Cleaner heating mode selection
 - **Info panel** - Common settings visible in zone configuration
 - **Improved translations** - All UI text properly localized
 - **Better error handling** - Clear validation messages
 
 #### Breaking Changes
+
 - **Migration required** - Existing installations need to create common settings
 - **Configuration format updated** - Zone entries now reference common settings
 - **Manual migration** - Delete existing zones and recreate after setting up common settings
@@ -1116,7 +1239,74 @@ Contributions are welcome! Please:
 
 ## Changelog
 
-### v1.8.1 (Current - Bugfix Release)
+### v1.9.0 (Current - Feature Release)
+**Release Date:** November 22, 2025
+
+**📊 New Feature: Complete Lovelace Dashboard (Phase 1 + Phase 2)**
+
+**Phase 1 - Core Monitoring:**
+- **System Status Overview** - Real-time monitoring of boiler, zones, and outdoor temperature
+- **Daily Heating Statistics** - Track heating time per zone with bar chart comparisons
+- **Multi-Zone Temperature Graphs** - ApexCharts visualization with all zones and targets
+- **Boiler & Zone Timeline** - 24-hour visual activity timeline
+- **Zone Detail Cards** - Individual thermostat controls with statistics
+- **Template Sensors** - 20+ new sensors for metrics and calculations
+- **History Stats Sensors** - Daily, weekly, monthly heating time tracking
+
+**Phase 2 - Advanced Analytics:**
+- **⚡ Piggyback Heating Performance** - Track success rate, events, and energy savings
+- **🏆 Energy Efficiency Score** - 0-100 scoring system with 4 components (piggyback, stability, cycling, adaptive)
+- **📊 Weekly/Monthly Comparison** - Historical trend analysis with per-zone breakdown
+- **💰 Cost Estimation** - Energy cost tracking with configurable power and rate settings
+- **🏠 Comfort Analytics** - Temperature deviation tracking and comfort scoring (0-100%)
+- **Efficiency Scoring Algorithm** - 25 points each for: Piggyback usage, Temperature stability, Boiler cycling, Adaptive hysteresis
+- **Cost Calculation** - Heating hours × Average power × Cost per kWh with monthly projections
+- **Comfort Metrics** - Per-zone deviation analysis with comfortable/uncomfortable zones
+
+**📝 Technical Implementation:**
+- Template sensors for system status, active zones, deviations, efficiency scoring
+- History stats platform integration for time tracking
+- Counter for boiler cycle counting and piggyback event tracking
+- Input numbers for configurable power and cost settings
+- Automations for daily resets and piggyback event tracking
+- ApexCharts card configuration with dual Y-axis
+- Bar card for heating time comparisons and deviation charts
+- Gauge cards for efficiency and comfort scoring
+
+**⚙️ New Files (Phase 1):**
+- `/docs/lovelace/PHASE1_INSTALLATION_GUIDE.md` - Complete setup guide
+- `/docs/lovelace/phase1_helpers.yaml` - Helper sensor configurations
+- `/docs/lovelace/phase1_template_sensors.yaml` - Template sensor definitions
+- `/docs/lovelace/phase1_lovelace_cards.yaml` - Dashboard card YAML (Cards 1-5)
+- `/docs/lovelace/README.md` - Documentation index
+- `/docs/lovelace/PHASE1_SUMMARY.md` - Implementation summary
+
+**⚙️ New Files (Phase 2):**
+- `/docs/lovelace/PHASE2_INSTALLATION_GUIDE.md` - Complete Phase 2 setup guide
+- `/docs/lovelace/phase2_helpers.yaml` - Counters, input numbers, automations
+- `/docs/lovelace/phase2_template_sensors.yaml` - Efficiency, cost, comfort sensors
+- `/docs/lovelace/phase2_lovelace_cards.yaml` - Advanced analytics cards (Cards 6-10)
+- `/docs/LOVELACE_DASHBOARD_PROPOSAL.md` - Full dashboard proposal
+
+**✨ User Benefits:**
+- Comprehensive visibility into heating system performance
+- Track energy usage and identify optimization opportunities
+- Beautiful, professional dashboard with graphs and statistics
+- Advanced analytics for efficiency scoring and cost tracking
+- Data-driven insights for system optimization
+- No code changes to core integration - pure add-on
+- Easy customization of colors, zones, and time ranges
+- Configurable power and cost settings via UI
+
+**📦 Requirements:**
+- ApexCharts Card (HACS)
+- Bar Card (HACS) - optional
+- Home Assistant 2025.10+
+- SmartHeatZones v1.9.0+
+
+---
+
+### v1.8.1 (Bugfix Release)
 **Release Date:** November 22, 2025
 
 **🐛 Bug Fixes:**

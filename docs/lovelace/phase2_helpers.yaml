@@ -1,0 +1,159 @@
+# SmartHeatZones - Phase 2 Helper Entities
+# Add these to your configuration.yaml or create via UI
+
+# ==========================================================================
+# COUNTERS FOR PIGGYBACK TRACKING
+# ==========================================================================
+
+counter:
+  # Piggyback event counter (resets daily)
+  piggyback_events_today:
+    name: Piggyback Events Today
+    icon: mdi:lightning-bolt
+    initial: 0
+    step: 1
+
+# ==========================================================================
+# AUTOMATIONS FOR COUNTER MANAGEMENT
+# ==========================================================================
+
+automation:
+  # Reset piggyback counter at midnight
+  - id: reset_piggyback_counter
+    alias: "SmartHeatZones - Reset Piggyback Counter"
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    action:
+      - service: counter.reset
+        target:
+          entity_id: counter.piggyback_events_today
+
+  # Track piggyback events (example - adjust based on your logging)
+  # This increments when a piggyback heating event is detected
+  # You may need to customize this based on how you track piggyback events
+  - id: track_piggyback_event
+    alias: "SmartHeatZones - Track Piggyback Event"
+    description: "Increment counter when piggyback heating occurs"
+    trigger:
+      # Example: Monitor for specific log messages or state changes
+      # Adjust this trigger based on your actual piggyback detection method
+      - platform: state
+        entity_id:
+          - climate.living_room
+          - climate.bedroom
+          - climate.kitchen
+          - climate.bathroom
+        attribute: hvac_action
+        to: 'heating'
+    condition:
+      # Only count if boiler was already on (piggyback situation)
+      - condition: state
+        entity_id: switch.boiler_main
+        state: 'on'
+        for:
+          seconds: 5
+    action:
+      - service: counter.increment
+        target:
+          entity_id: counter.piggyback_events_today
+      - service: logbook.log
+        data:
+          name: "SmartHeatZones Piggyback"
+          message: "{{ trigger.to_state.name }} activated via piggyback heating"
+          entity_id: "{{ trigger.entity_id }}"
+
+# ==========================================================================
+# INPUT NUMBERS (for configuration)
+# ==========================================================================
+
+input_number:
+  # Average heating power (kW) - customize based on your system
+  smartheatzones_average_power:
+    name: "SmartHeatZones Average Power"
+    min: 0.5
+    max: 10.0
+    step: 0.1
+    initial: 2.5
+    unit_of_measurement: "kW"
+    icon: mdi:lightning-bolt
+
+  # Cost per kWh - customize based on your electricity tariff
+  smartheatzones_cost_per_kwh:
+    name: "SmartHeatZones Cost per kWh"
+    min: 0.05
+    max: 1.00
+    step: 0.01
+    initial: 0.20
+    unit_of_measurement: "€/kWh"
+    icon: mdi:currency-eur
+
+# ==========================================================================
+# UTILITY METERS (already in Phase 1, but including for reference)
+# ==========================================================================
+
+# These were created in Phase 1 but are essential for Phase 2 comparisons
+# Uncomment if you haven't created them yet
+
+# utility_meter:
+#   living_room_heating_weekly:
+#     source: sensor.living_room_heating_time_today
+#     cycle: weekly
+#
+#   bedroom_heating_weekly:
+#     source: sensor.bedroom_heating_time_today
+#     cycle: weekly
+#
+#   kitchen_heating_weekly:
+#     source: sensor.kitchen_heating_time_today
+#     cycle: weekly
+#
+#   bathroom_heating_weekly:
+#     source: sensor.bathroom_heating_time_today
+#     cycle: weekly
+#
+#   living_room_heating_monthly:
+#     source: sensor.living_room_heating_time_today
+#     cycle: monthly
+#
+#   bedroom_heating_monthly:
+#     source: sensor.bedroom_heating_time_today
+#     cycle: monthly
+#
+#   kitchen_heating_monthly:
+#     source: sensor.kitchen_heating_time_today
+#     cycle: monthly
+#
+#   bathroom_heating_monthly:
+#     source: sensor.bathroom_heating_time_today
+#     cycle: monthly
+
+# ==========================================================================
+# OPTIONAL: POWER METER INTEGRATION
+# ==========================================================================
+
+# If you have a power meter, you can track actual energy consumption
+# instead of using estimates. Example:
+
+# sensor:
+#   - platform: integration
+#     source: sensor.boiler_power
+#     name: "Boiler Energy Total"
+#     unit_prefix: k
+#     round: 2
+#     method: left
+#
+#   - platform: utility_meter
+#     source: sensor.boiler_energy_total
+#     name: "Boiler Energy Daily"
+#     cycle: daily
+#
+#   - platform: utility_meter
+#     source: sensor.boiler_energy_total
+#     name: "Boiler Energy Weekly"
+#     cycle: weekly
+#
+#   - platform: utility_meter
+#     source: sensor.boiler_energy_total
+#     name: "Boiler Energy Monthly"
+#     cycle: monthly

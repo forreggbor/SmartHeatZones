@@ -1,0 +1,151 @@
+# SmartHeatZones - Phase 1 Helper Entities
+# These need to be created via UI (Settings > Devices & Services > Helpers)
+# OR add them to your configuration.yaml
+
+# ==========================================================================
+# HISTORY STATS SENSORS (for daily heating time tracking)
+# ==========================================================================
+
+sensor:
+  # Living Room heating time today
+  - platform: history_stats
+    name: Living Room Heating Time Today
+    unique_id: living_room_heating_time_today
+    entity_id: climate.living_room
+    state: 'heating'
+    type: time
+    start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+    end: '{{ now() }}'
+
+  # Bedroom heating time today
+  - platform: history_stats
+    name: Bedroom Heating Time Today
+    unique_id: bedroom_heating_time_today
+    entity_id: climate.bedroom
+    state: 'heating'
+    type: time
+    start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+    end: '{{ now() }}'
+
+  # Kitchen heating time today
+  - platform: history_stats
+    name: Kitchen Heating Time Today
+    unique_id: kitchen_heating_time_today
+    entity_id: climate.kitchen
+    state: 'heating'
+    type: time
+    start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+    end: '{{ now() }}'
+
+  # Bathroom heating time today
+  - platform: history_stats
+    name: Bathroom Heating Time Today
+    unique_id: bathroom_heating_time_today
+    entity_id: climate.bathroom
+    state: 'heating'
+    type: time
+    start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+    end: '{{ now() }}'
+
+  # Boiler runtime today
+  - platform: history_stats
+    name: Boiler Runtime Today
+    unique_id: boiler_runtime_today
+    entity_id: switch.boiler_main
+    state: 'on'
+    type: time
+    start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+    end: '{{ now() }}'
+
+  # ==========================================================================
+  # HISTORY STATS - BOILER CYCLE COUNT
+  # ==========================================================================
+
+  - platform: history_stats
+    name: Boiler ON Count Today
+    unique_id: boiler_on_count_today
+    entity_id: switch.boiler_main
+    state: 'on'
+    type: count
+    start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+    end: '{{ now() }}'
+
+# ==========================================================================
+# COUNTERS (for tracking events)
+# ==========================================================================
+
+counter:
+  # Boiler cycle counter (resets daily via automation)
+  boiler_cycles_today:
+    name: Boiler Cycles Today
+    icon: mdi:counter
+    initial: 0
+    step: 1
+
+# ==========================================================================
+# AUTOMATIONS (for counter management)
+# ==========================================================================
+
+automation:
+  # Reset boiler cycle counter at midnight
+  - id: reset_boiler_cycles_counter
+    alias: "SmartHeatZones - Reset Boiler Cycles Counter"
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    action:
+      - service: counter.reset
+        target:
+          entity_id: counter.boiler_cycles_today
+
+  # Increment boiler cycle counter when boiler turns on
+  - id: increment_boiler_cycles
+    alias: "SmartHeatZones - Increment Boiler Cycles"
+    trigger:
+      - platform: state
+        entity_id: switch.boiler_main
+        from: 'off'
+        to: 'on'
+    action:
+      - service: counter.increment
+        target:
+          entity_id: counter.boiler_cycles_today
+
+# ==========================================================================
+# UTILITY METERS (optional - for weekly/monthly tracking)
+# ==========================================================================
+
+utility_meter:
+  # Weekly heating time tracking
+  living_room_heating_weekly:
+    source: sensor.living_room_heating_time_today
+    cycle: weekly
+
+  bedroom_heating_weekly:
+    source: sensor.bedroom_heating_time_today
+    cycle: weekly
+
+  kitchen_heating_weekly:
+    source: sensor.kitchen_heating_time_today
+    cycle: weekly
+
+  bathroom_heating_weekly:
+    source: sensor.bathroom_heating_time_today
+    cycle: weekly
+
+  # Monthly tracking
+  living_room_heating_monthly:
+    source: sensor.living_room_heating_time_today
+    cycle: monthly
+
+  bedroom_heating_monthly:
+    source: sensor.bedroom_heating_time_today
+    cycle: monthly
+
+  kitchen_heating_monthly:
+    source: sensor.kitchen_heating_time_today
+    cycle: monthly
+
+  bathroom_heating_monthly:
+    source: sensor.bathroom_heating_time_today
+    cycle: monthly

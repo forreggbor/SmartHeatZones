@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.8.1
+Version: 1.9.0
+
+NEW in v1.9.0:
+- Lovelace Dashboard Phase 1 (no changes to config flow)
 
 NEW in v1.8.1:
 - Fixed outdoor sensor field to be truly optional

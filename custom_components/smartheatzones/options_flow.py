@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.8.1 (HA 2025.10+)
+Version: 1.9.0 (HA 2025.10+)
 Author: forreggbor
+
+NEW in v1.9.0:
+- Lovelace Dashboard Phase 1 (no changes to options flow)
 
 NEW in v1.8.1:
 - Fixed outdoor sensor properly removed when cleared

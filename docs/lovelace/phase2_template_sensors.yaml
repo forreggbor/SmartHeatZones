@@ -1,0 +1,301 @@
+# SmartHeatZones - Phase 2 Template Sensors
+# Add these to your configuration.yaml under 'template:' section
+# These build on Phase 1 sensors
+
+template:
+  - sensor:
+      # ========================================================================
+      # PIGGYBACK HEATING ANALYTICS
+      # ========================================================================
+
+      # Piggyback event counter (requires counter helper created manually)
+      - name: "SmartHeatZones Piggyback Events Today"
+        unique_id: smartheatzones_piggyback_events_today
+        state: >
+          {{ states('counter.piggyback_events_today') | int(0) }}
+        icon: mdi:lightning-bolt
+        attributes:
+          friendly_name: "Piggyback Heating Events Today"
+
+      # Piggyback success rate (example - needs actual tracking)
+      - name: "SmartHeatZones Piggyback Success Rate"
+        unique_id: smartheatzones_piggyback_success_rate
+        state: >
+          {% set total = states('counter.boiler_cycles_today') | int(0) %}
+          {% set piggyback = states('counter.piggyback_events_today') | int(0) %}
+          {% if total > 0 %}
+            {{ ((piggyback / total) * 100) | round(0) }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "%"
+        icon: mdi:percent
+        attributes:
+          total_cycles: >
+            {{ states('counter.boiler_cycles_today') | int(0) }}
+          piggyback_events: >
+            {{ states('counter.piggyback_events_today') | int(0) }}
+
+      # Energy savings estimate from piggyback
+      - name: "SmartHeatZones Piggyback Energy Saved"
+        unique_id: smartheatzones_piggyback_energy_saved
+        state: >
+          {% set piggyback_hours = states('counter.piggyback_events_today') | int(0) * 0.25 %}
+          {% set avg_power = 2.5 %}
+          {{ (piggyback_hours * avg_power) | round(2) }}
+        unit_of_measurement: "kWh"
+        icon: mdi:leaf
+        attributes:
+          estimated_savings: >
+            {% set piggyback_hours = states('counter.piggyback_events_today') | int(0) * 0.25 %}
+            {% set avg_power = 2.5 %}
+            {% set cost_per_kwh = 0.20 %}
+            €{{ ((piggyback_hours * avg_power * cost_per_kwh) | round(2)) }}
+
+      # ========================================================================
+      # EFFICIENCY SCORING (0-100)
+      # ========================================================================
+
+      - name: "SmartHeatZones Efficiency Score"
+        unique_id: smartheatzones_efficiency_score
+        state: >
+          {% set score = 0 %}
+
+          {# Piggyback usage score (0-25 points) #}
+          {% set piggyback_rate = states('sensor.smartheatzones_piggyback_success_rate') | float(0) %}
+          {% set piggyback_score = (piggyback_rate / 4) | round(0) %}
+          {% set score = score + piggyback_score %}
+
+          {# Temperature stability score (0-25 points) #}
+          {% set deviations = [
+            states('sensor.smartheatzones_living_room_deviation') | abs | float(0),
+            states('sensor.smartheatzones_bedroom_deviation') | abs | float(0),
+            states('sensor.smartheatzones_kitchen_deviation') | abs | float(0),
+            states('sensor.smartheatzones_bathroom_deviation') | abs | float(0)
+          ] %}
+          {% set avg_deviation = (deviations | sum / deviations | length) %}
+          {% set stability_score = ((1 - avg_deviation) * 25) | round(0) %}
+          {% set score = score + (stability_score if stability_score > 0 else 0) %}
+
+          {# Boiler cycling score (0-25 points) - fewer cycles is better #}
+          {% set cycles = states('counter.boiler_cycles_today') | int(0) %}
+          {% set ideal_cycles = 20 %}
+          {% set cycle_score = 25 - ((cycles - ideal_cycles) | abs) %}
+          {% set cycle_score = cycle_score if cycle_score > 0 else 0 %}
+          {% set cycle_score = 25 if cycle_score > 25 else cycle_score %}
+          {% set score = score + cycle_score %}
+
+          {# Adaptive hysteresis usage (0-25 points) #}
+          {% set adaptive_score = 25 if is_state('binary_sensor.smartheatzones_adaptive_hysteresis_active', 'on') else 0 %}
+          {% set score = score + adaptive_score %}
+
+          {{ score | round(0) }}
+        unit_of_measurement: "points"
+        icon: >
+          {% set score = states('sensor.smartheatzones_efficiency_score') | int(0) %}
+          {% if score >= 90 %}
+            mdi:star
+          {% elif score >= 75 %}
+            mdi:star-outline
+          {% elif score >= 60 %}
+            mdi:star-half-full
+          {% else %}
+            mdi:star-off
+          {% endif %}
+        attributes:
+          rating: >
+            {% set score = states('sensor.smartheatzones_efficiency_score') | int(0) %}
+            {% if score >= 90 %}
+              Excellent
+            {% elif score >= 75 %}
+              Good
+            {% elif score >= 60 %}
+              Fair
+            {% else %}
+              Needs Improvement
+            {% endif %}
+          stars: >
+            {% set score = states('sensor.smartheatzones_efficiency_score') | int(0) %}
+            {% if score >= 90 %}
+              5
+            {% elif score >= 80 %}
+              4
+            {% elif score >= 70 %}
+              3
+            {% elif score >= 60 %}
+              2
+            {% else %}
+              1
+            {% endif %}
+          breakdown: >
+            Piggyback: {{ ((states('sensor.smartheatzones_piggyback_success_rate') | float(0)) / 4) | round(0) }}/25 |
+            Stability: {{ ((1 - ((
+              [states('sensor.smartheatzones_living_room_deviation') | abs | float(0),
+               states('sensor.smartheatzones_bedroom_deviation') | abs | float(0),
+               states('sensor.smartheatzones_kitchen_deviation') | abs | float(0),
+               states('sensor.smartheatzones_bathroom_deviation') | abs | float(0)] | sum) / 4)) * 25) | round(0) }}/25 |
+            Cycling: {{ (25 - ((states('counter.boiler_cycles_today') | int(0) - 20) | abs)) | round(0) }}/25 |
+            Adaptive: {{ 25 if is_state('binary_sensor.smartheatzones_adaptive_hysteresis_active', 'on') else 0 }}/25
+
+      # ========================================================================
+      # WEEKLY COMPARISONS
+      # ========================================================================
+
+      - name: "SmartHeatZones Heating This Week"
+        unique_id: smartheatzones_heating_this_week
+        state: >
+          {% set total = 0 %}
+          {% set sensors = [
+            'sensor.living_room_heating_weekly',
+            'sensor.bedroom_heating_weekly',
+            'sensor.kitchen_heating_weekly',
+            'sensor.bathroom_heating_weekly'
+          ] %}
+          {% for sensor in sensors %}
+            {% set total = total + (states(sensor) | float(0)) %}
+          {% endfor %}
+          {{ (total / 60) | round(2) }}
+        unit_of_measurement: "h"
+        icon: mdi:calendar-week
+        attributes:
+          per_zone: >
+            Living: {{ (states('sensor.living_room_heating_weekly') | float(0) / 60) | round(1) }}h |
+            Bed: {{ (states('sensor.bedroom_heating_weekly') | float(0) / 60) | round(1) }}h |
+            Kitchen: {{ (states('sensor.kitchen_heating_weekly') | float(0) / 60) | round(1) }}h |
+            Bath: {{ (states('sensor.bathroom_heating_weekly') | float(0) / 60) | round(1) }}h
+
+      - name: "SmartHeatZones Heating This Month"
+        unique_id: smartheatzones_heating_this_month
+        state: >
+          {% set total = 0 %}
+          {% set sensors = [
+            'sensor.living_room_heating_monthly',
+            'sensor.bedroom_heating_monthly',
+            'sensor.kitchen_heating_monthly',
+            'sensor.bathroom_heating_monthly'
+          ] %}
+          {% for sensor in sensors %}
+            {% set total = total + (states(sensor) | float(0)) %}
+          {% endfor %}
+          {{ (total / 60) | round(2) }}
+        unit_of_measurement: "h"
+        icon: mdi:calendar-month
+        attributes:
+          per_zone: >
+            Living: {{ (states('sensor.living_room_heating_monthly') | float(0) / 60) | round(1) }}h |
+            Bed: {{ (states('sensor.bedroom_heating_monthly') | float(0) / 60) | round(1) }}h |
+            Kitchen: {{ (states('sensor.kitchen_heating_monthly') | float(0) / 60) | round(1) }}h |
+            Bath: {{ (states('sensor.bathroom_heating_monthly') | float(0) / 60) | round(1) }}h
+
+      # ========================================================================
+      # COST ESTIMATION (requires power meter or manual power input)
+      # ========================================================================
+
+      - name: "SmartHeatZones Energy Cost Today"
+        unique_id: smartheatzones_energy_cost_today
+        state: >
+          {% set total_hours = states('sensor.smartheatzones_total_heating_time_today') | float(0) %}
+          {% set avg_power = 2.5 %}
+          {% set cost_per_kwh = 0.20 %}
+          {{ (total_hours * avg_power * cost_per_kwh) | round(2) }}
+        unit_of_measurement: "€"
+        icon: mdi:currency-eur
+        attributes:
+          energy_consumed: >
+            {% set total_hours = states('sensor.smartheatzones_total_heating_time_today') | float(0) %}
+            {% set avg_power = 2.5 %}
+            {{ (total_hours * avg_power) | round(2) }} kWh
+          cost_per_kwh: "€0.20"
+          avg_power: "2.5 kW"
+
+      - name: "SmartHeatZones Energy Cost This Week"
+        unique_id: smartheatzones_energy_cost_week
+        state: >
+          {% set total_hours = states('sensor.smartheatzones_heating_this_week') | float(0) %}
+          {% set avg_power = 2.5 %}
+          {% set cost_per_kwh = 0.20 %}
+          {{ (total_hours * avg_power * cost_per_kwh) | round(2) }}
+        unit_of_measurement: "€"
+        icon: mdi:currency-eur
+
+      - name: "SmartHeatZones Energy Cost This Month"
+        unique_id: smartheatzones_energy_cost_month
+        state: >
+          {% set total_hours = states('sensor.smartheatzones_heating_this_month') | float(0) %}
+          {% set avg_power = 2.5 %}
+          {% set cost_per_kwh = 0.20 %}
+          {{ (total_hours * avg_power * cost_per_kwh) | round(2) }}
+        unit_of_measurement: "€"
+        icon: mdi:currency-eur
+        attributes:
+          monthly_projection: >
+            {% set days_elapsed = now().day %}
+            {% set days_in_month = 30 %}
+            {% set total_hours = states('sensor.smartheatzones_heating_this_month') | float(0) %}
+            {% set avg_power = 2.5 %}
+            {% set cost_per_kwh = 0.20 %}
+            {% set daily_avg = total_hours / days_elapsed if days_elapsed > 0 else 0 %}
+            {% set projected = daily_avg * days_in_month * avg_power * cost_per_kwh %}
+            €{{ projected | round(2) }}
+
+      # ========================================================================
+      # COMFORT ANALYTICS
+      # ========================================================================
+
+      - name: "SmartHeatZones Comfort Score"
+        unique_id: smartheatzones_comfort_score
+        state: >
+          {% set zones = [
+            'sensor.smartheatzones_living_room_deviation',
+            'sensor.smartheatzones_bedroom_deviation',
+            'sensor.smartheatzones_kitchen_deviation',
+            'sensor.smartheatzones_bathroom_deviation'
+          ] %}
+          {% set comfortable_count = 0 %}
+          {% for zone in zones %}
+            {% set deviation = states(zone) | abs | float(0) %}
+            {% if deviation < 1.0 %}
+              {% set comfortable_count = comfortable_count + 1 %}
+            {% endif %}
+          {% endfor %}
+          {{ ((comfortable_count / zones | length) * 100) | round(0) }}
+        unit_of_measurement: "%"
+        icon: mdi:home-thermometer
+        attributes:
+          status: >
+            {% set score = states('sensor.smartheatzones_comfort_score') | int(0) %}
+            {% if score >= 90 %}
+              Excellent
+            {% elif score >= 75 %}
+              Good
+            {% elif score >= 50 %}
+              Fair
+            {% else %}
+              Poor
+            {% endif %}
+
+  # ==========================================================================
+  # BINARY SENSORS
+  # ==========================================================================
+
+  - binary_sensor:
+      # Adaptive hysteresis active status
+      - name: "SmartHeatZones Adaptive Hysteresis Active"
+        unique_id: smartheatzones_adaptive_hysteresis_active
+        state: >
+          {% set outdoor = states('sensor.smartheatzones_outdoor_temperature') | float(999) %}
+          {{ outdoor < 10 and outdoor != 999 }}
+        device_class: running
+
+      # High efficiency indicator
+      - name: "SmartHeatZones High Efficiency"
+        unique_id: smartheatzones_high_efficiency
+        state: >
+          {{ states('sensor.smartheatzones_efficiency_score') | int(0) >= 75 }}
+        device_class: running
+        icon: >
+          {% if is_state('binary_sensor.smartheatzones_high_efficiency', 'on') %}
+            mdi:leaf
+          {% else %}
+            mdi:leaf-off
+          {% endif %}

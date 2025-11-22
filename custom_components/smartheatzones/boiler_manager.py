@@ -1,8 +1,11 @@
 """
 SmartHeatZones - Boiler Manager
-Version: 1.8.1
+Version: 1.9.0
 
 Central boiler relay coordinator - manages shared boiler switch across all zones.
+
+NEW in v1.9.0:
+- Lovelace Dashboard Phase 1 (no changes to boiler manager)
 
 NEW in v1.8.1:
 - Piggyback heating: When boiler turns on, all zones with temp < target turn on immediately

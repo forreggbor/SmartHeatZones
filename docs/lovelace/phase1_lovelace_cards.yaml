@@ -1,0 +1,467 @@
+# SmartHeatZones - Phase 1 Lovelace Dashboard Cards
+# Copy these card configurations to your Lovelace dashboard
+
+# ==========================================================================
+# CARD 1: SYSTEM STATUS OVERVIEW
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  # Header
+  - type: markdown
+    content: |
+      # 🏠 SmartHeatZones System Status
+
+  # Main status card
+  - type: entities
+    title: System Overview
+    show_header_toggle: false
+    entities:
+      - entity: switch.boiler_main
+        name: Boiler Status
+        icon: mdi:fire
+        secondary_info: last-changed
+
+      - entity: sensor.smartheatzones_outdoor_temperature
+        name: Outdoor Temperature
+        icon: mdi:thermometer
+
+      - entity: sensor.smartheatzones_active_zones_count
+        name: Active Zones
+        icon: mdi:radiator
+        secondary_info: attribute
+        attribute: heating_zones
+
+      - entity: sensor.smartheatzones_total_heating_time_today
+        name: Total Heating Today
+        icon: mdi:clock-check
+        secondary_info: attribute
+        attribute: formatted
+
+      - entity: sensor.smartheatzones_boiler_cycles_today
+        name: Boiler Cycles Today
+        icon: mdi:counter
+
+      - type: divider
+
+      - entity: binary_sensor.smartheatzones_any_zone_heating
+        name: System Heating
+        icon: mdi:fire
+
+# ==========================================================================
+# CARD 2: DAILY HEATING STATISTICS
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 📊 Daily Heating Statistics
+
+  # Statistics grid
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      # Living Room
+      - type: statistic
+        entity: sensor.living_room_heating_time_today
+        period:
+          calendar:
+            period: day
+        stat_type: change
+        name: Living Room
+        icon: mdi:sofa
+
+      # Bedroom
+      - type: statistic
+        entity: sensor.bedroom_heating_time_today
+        period:
+          calendar:
+            period: day
+        stat_type: change
+        name: Bedroom
+        icon: mdi:bed
+
+      # Kitchen
+      - type: statistic
+        entity: sensor.kitchen_heating_time_today
+        period:
+          calendar:
+            period: day
+        stat_type: change
+        name: Kitchen
+        icon: mdi:silverware-fork-knife
+
+      # Bathroom
+      - type: statistic
+        entity: sensor.bathroom_heating_time_today
+        period:
+          calendar:
+            period: day
+        stat_type: change
+        name: Bathroom
+        icon: mdi:shower
+
+  # Bar chart comparison
+  - type: custom:bar-card
+    entities:
+      - entity: sensor.living_room_heating_time_today
+        name: Living Room
+        icon: mdi:sofa
+      - entity: sensor.bedroom_heating_time_today
+        name: Bedroom
+        icon: mdi:bed
+      - entity: sensor.kitchen_heating_time_today
+        name: Kitchen
+        icon: mdi:silverware-fork-knife
+      - entity: sensor.bathroom_heating_time_today
+        name: Bathroom
+        icon: mdi:shower
+    title: Heating Time Comparison
+    unit_of_measurement: hours
+    color: '#FF6B6B'
+    height: 40px
+    max: 10
+    positions:
+      icon: inside
+      name: inside
+      value: inside
+
+  # Average and totals
+  - type: entities
+    entities:
+      - entity: sensor.smartheatzones_average_heating_time
+        name: Average per Zone
+        icon: mdi:chart-timeline-variant
+      - entity: sensor.smartheatzones_total_heating_time_today
+        name: Total Heating Time
+        icon: mdi:clock-check
+        secondary_info: attribute
+        attribute: formatted
+      - entity: sensor.smartheatzones_boiler_runtime_today
+        name: Boiler Runtime
+        icon: mdi:fire-circle
+        secondary_info: attribute
+        attribute: formatted
+
+# ==========================================================================
+# CARD 3: BOILER & ZONE TIMELINE
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 🔥 Boiler & Zone Activity Timeline
+
+  # State timeline for boiler
+  - type: history-graph
+    title: Boiler Activity (24h)
+    hours_to_show: 24
+    refresh_interval: 60
+    entities:
+      - entity: switch.boiler_main
+        name: Boiler
+
+  # State timeline for all zones
+  - type: history-graph
+    title: Zone Heating Activity (24h)
+    hours_to_show: 24
+    refresh_interval: 60
+    entities:
+      - entity: climate.living_room
+        name: Living Room
+      - entity: climate.bedroom
+        name: Bedroom
+      - entity: climate.kitchen
+        name: Kitchen
+      - entity: climate.bathroom
+        name: Bathroom
+
+  # Alternative: Logbook card (if you prefer text format)
+  - type: logbook
+    title: Recent Heating Events
+    entities:
+      - switch.boiler_main
+      - climate.living_room
+      - climate.bedroom
+      - climate.kitchen
+      - climate.bathroom
+    hours_to_show: 6
+
+# ==========================================================================
+# CARD 4: MULTI-ZONE TEMPERATURE GRAPH
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 🌡️ Temperature Trends (24 Hours)
+
+  # ApexCharts - Multi-line temperature graph
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    update_interval: 1min
+    header:
+      show: true
+      title: Zone Temperatures vs Outdoor
+      show_states: true
+      colorize_states: true
+    now:
+      show: true
+      label: Now
+    series:
+      # Outdoor temperature (bold line)
+      - entity: sensor.smartheatzones_outdoor_temperature
+        name: Outdoor
+        type: line
+        stroke_width: 3
+        color: '#4A90E2'
+        opacity: 0.8
+        yaxis_id: outdoor
+        show:
+          legend_value: true
+          in_header: true
+
+      # Living Room
+      - entity: sensor.living_room_temperature
+        name: Living Room
+        type: area
+        stroke_width: 2
+        color: '#66BB6A'
+        opacity: 0.3
+        yaxis_id: indoor
+        show:
+          legend_value: true
+          in_header: true
+
+      - entity: climate.living_room
+        name: LR Target
+        attribute: temperature
+        type: line
+        stroke_width: 1
+        curve: stepline
+        color: '#66BB6A'
+        opacity: 0.5
+        yaxis_id: indoor
+        show:
+          legend_value: false
+          in_header: false
+
+      # Bedroom
+      - entity: sensor.bedroom_temperature
+        name: Bedroom
+        type: area
+        stroke_width: 2
+        color: '#FFA726'
+        opacity: 0.3
+        yaxis_id: indoor
+        show:
+          legend_value: true
+          in_header: true
+
+      - entity: climate.bedroom
+        name: BR Target
+        attribute: temperature
+        type: line
+        stroke_width: 1
+        curve: stepline
+        color: '#FFA726'
+        opacity: 0.5
+        yaxis_id: indoor
+        show:
+          legend_value: false
+          in_header: false
+
+      # Kitchen
+      - entity: sensor.kitchen_temperature
+        name: Kitchen
+        type: area
+        stroke_width: 2
+        color: '#AB47BC'
+        opacity: 0.3
+        yaxis_id: indoor
+        show:
+          legend_value: true
+          in_header: true
+
+      - entity: climate.kitchen
+        name: KT Target
+        attribute: temperature
+        type: line
+        stroke_width: 1
+        curve: stepline
+        color: '#AB47BC'
+        opacity: 0.5
+        yaxis_id: indoor
+        show:
+          legend_value: false
+          in_header: false
+
+      # Bathroom
+      - entity: sensor.bathroom_temperature
+        name: Bathroom
+        type: area
+        stroke_width: 2
+        color: '#EF5350'
+        opacity: 0.3
+        yaxis_id: indoor
+        show:
+          legend_value: true
+          in_header: true
+
+      - entity: climate.bathroom
+        name: BA Target
+        attribute: temperature
+        type: line
+        stroke_width: 1
+        curve: stepline
+        color: '#EF5350'
+        opacity: 0.5
+        yaxis_id: indoor
+        show:
+          legend_value: false
+          in_header: false
+
+    yaxis:
+      - id: indoor
+        apex_config:
+          tickAmount: 5
+          min: 16
+          max: 26
+          decimalsInFloat: 1
+      - id: outdoor
+        opposite: true
+        apex_config:
+          tickAmount: 5
+          decimalsInFloat: 1
+
+    apex_config:
+      chart:
+        height: 350px
+      legend:
+        show: true
+        position: bottom
+      stroke:
+        curve: smooth
+      grid:
+        show: true
+      tooltip:
+        enabled: true
+        shared: true
+
+# ==========================================================================
+# CARD 5: ZONE DETAILS (Individual Cards)
+# ==========================================================================
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 🏠 Zone Details
+
+  # Grid of zone cards
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      # Living Room
+      - type: thermostat
+        entity: climate.living_room
+        name: Living Room
+        features:
+          - type: climate-hvac-modes
+            hvac_modes:
+              - heat
+              - 'off'
+          - type: climate-preset-modes
+            preset_modes:
+              - auto
+              - manual
+              - comfort
+              - eco
+
+      # Bedroom
+      - type: thermostat
+        entity: climate.bedroom
+        name: Bedroom
+        features:
+          - type: climate-hvac-modes
+            hvac_modes:
+              - heat
+              - 'off'
+          - type: climate-preset-modes
+            preset_modes:
+              - auto
+              - manual
+              - comfort
+              - eco
+
+      # Kitchen
+      - type: thermostat
+        entity: climate.kitchen
+        name: Kitchen
+        features:
+          - type: climate-hvac-modes
+            hvac_modes:
+              - heat
+              - 'off'
+          - type: climate-preset-modes
+            preset_modes:
+              - auto
+              - manual
+              - comfort
+              - eco
+
+      # Bathroom
+      - type: thermostat
+        entity: climate.bathroom
+        name: Bathroom
+        features:
+          - type: climate-hvac-modes
+            hvac_modes:
+              - heat
+              - 'off'
+          - type: climate-preset-modes
+            preset_modes:
+              - auto
+              - manual
+              - comfort
+              - eco
+
+  # Temperature deviations
+  - type: entities
+    title: Temperature Deviations from Target
+    entities:
+      - entity: sensor.smartheatzones_living_room_deviation
+        name: Living Room
+        icon: mdi:thermometer-lines
+      - entity: sensor.smartheatzones_bedroom_deviation
+        name: Bedroom
+        icon: mdi:thermometer-lines
+      - entity: sensor.smartheatzones_kitchen_deviation
+        name: Kitchen
+        icon: mdi:thermometer-lines
+      - entity: sensor.smartheatzones_bathroom_deviation
+        name: Bathroom
+        icon: mdi:thermometer-lines
+
+# ==========================================================================
+# COMPLETE DASHBOARD (All cards combined)
+# ==========================================================================
+
+# To create a complete dashboard, use this layout:
+#
+# views:
+#   - title: SmartHeatZones
+#     icon: mdi:radiator
+#     path: smartheatzones
+#     type: sidebar
+#     cards:
+#       - [Insert CARD 1 here]
+#       - [Insert CARD 2 here]
+#       - [Insert CARD 3 here]
+#       - [Insert CARD 4 here]
+#       - [Insert CARD 5 here]

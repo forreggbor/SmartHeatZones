@@ -1,0 +1,258 @@
+# SmartHeatZones - Phase 1 Template Sensors
+# Add these to your configuration.yaml under 'template:' section
+
+template:
+  - sensor:
+      # ========================================================================
+      # SYSTEM STATUS SENSORS
+      # ========================================================================
+
+      - name: "SmartHeatZones Active Zones Count"
+        unique_id: smartheatzones_active_zones_count
+        state: >
+          {% set zones = [
+            'climate.living_room',
+            'climate.bedroom',
+            'climate.kitchen',
+            'climate.bathroom'
+          ] %}
+          {{ zones | select('is_state_attr', 'hvac_action', 'heating') | list | count }}
+        attributes:
+          total_zones: >
+            {% set zones = [
+              'climate.living_room',
+              'climate.bedroom',
+              'climate.kitchen',
+              'climate.bathroom'
+            ] %}
+            {{ zones | count }}
+          heating_zones: >
+            {% set zones = [
+              'climate.living_room',
+              'climate.bedroom',
+              'climate.kitchen',
+              'climate.bathroom'
+            ] %}
+            {{ zones | select('is_state_attr', 'hvac_action', 'heating') | list | join(', ') | replace('climate.', '') | replace('_', ' ') | title }}
+        icon: mdi:radiator
+
+      - name: "SmartHeatZones Boiler Status"
+        unique_id: smartheatzones_boiler_status
+        state: >
+          {{ states('switch.boiler_main') }}
+        attributes:
+          friendly_name: "Boiler Main Switch"
+          uptime: >
+            {% if is_state('switch.boiler_main', 'on') %}
+              {{ relative_time(states.switch.boiler_main.last_changed) }}
+            {% else %}
+              Off
+            {% endif %}
+        icon: >
+          {% if is_state('switch.boiler_main', 'on') %}
+            mdi:fire
+          {% else %}
+            mdi:fire-off
+          {% endif %}
+
+      - name: "SmartHeatZones System Uptime"
+        unique_id: smartheatzones_system_uptime
+        state: >
+          {{ relative_time(states('sensor.uptime')) }}
+        icon: mdi:clock-outline
+
+      # ========================================================================
+      # OUTDOOR TEMPERATURE (if you have outdoor sensor)
+      # ========================================================================
+
+      - name: "SmartHeatZones Outdoor Temperature"
+        unique_id: smartheatzones_outdoor_temp
+        state: >
+          {% set outdoor_sensor = 'sensor.outdoor_temperature' %}
+          {% if states(outdoor_sensor) not in ['unavailable', 'unknown'] %}
+            {{ states(outdoor_sensor) | float(0) | round(1) }}
+          {% else %}
+            unavailable
+          {% endif %}
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:thermometer
+
+      # ========================================================================
+      # DAILY HEATING TIME SENSORS (Per Zone)
+      # ========================================================================
+
+      - name: "SmartHeatZones Living Room Heating Today"
+        unique_id: smartheatzones_living_room_heating_today
+        state: >
+          {{ state_attr('sensor.living_room_heating_time_today', 'value') | float(0) }}
+        unit_of_measurement: "h"
+        icon: mdi:clock-time-four
+
+      - name: "SmartHeatZones Bedroom Heating Today"
+        unique_id: smartheatzones_bedroom_heating_today
+        state: >
+          {{ state_attr('sensor.bedroom_heating_time_today', 'value') | float(0) }}
+        unit_of_measurement: "h"
+        icon: mdi:clock-time-four
+
+      - name: "SmartHeatZones Kitchen Heating Today"
+        unique_id: smartheatzones_kitchen_heating_today
+        state: >
+          {{ state_attr('sensor.kitchen_heating_time_today', 'value') | float(0) }}
+        unit_of_measurement: "h"
+        icon: mdi:clock-time-four
+
+      - name: "SmartHeatZones Bathroom Heating Today"
+        unique_id: smartheatzones_bathroom_heating_today
+        state: >
+          {{ state_attr('sensor.bathroom_heating_time_today', 'value') | float(0) }}
+        unit_of_measurement: "h"
+        icon: mdi:clock-time-four
+
+      # ========================================================================
+      # TOTAL DAILY HEATING TIME
+      # ========================================================================
+
+      - name: "SmartHeatZones Total Heating Time Today"
+        unique_id: smartheatzones_total_heating_today
+        state: >
+          {% set total = 0 %}
+          {% set sensors = [
+            'sensor.living_room_heating_time_today',
+            'sensor.bedroom_heating_time_today',
+            'sensor.kitchen_heating_time_today',
+            'sensor.bathroom_heating_time_today'
+          ] %}
+          {% for sensor in sensors %}
+            {% set total = total + (state_attr(sensor, 'value') | float(0)) %}
+          {% endfor %}
+          {{ (total / 60) | round(2) }}
+        unit_of_measurement: "h"
+        icon: mdi:clock-check
+        attributes:
+          formatted: >
+            {% set total_minutes = 0 %}
+            {% set sensors = [
+              'sensor.living_room_heating_time_today',
+              'sensor.bedroom_heating_time_today',
+              'sensor.kitchen_heating_time_today',
+              'sensor.bathroom_heating_time_today'
+            ] %}
+            {% for sensor in sensors %}
+              {% set total_minutes = total_minutes + (state_attr(sensor, 'value') | float(0)) %}
+            {% endfor %}
+            {% set hours = (total_minutes / 60) | int %}
+            {% set minutes = (total_minutes % 60) | int %}
+            {{ hours }}h {{ minutes }}m
+
+      # ========================================================================
+      # BOILER RUNTIME TODAY
+      # ========================================================================
+
+      - name: "SmartHeatZones Boiler Runtime Today"
+        unique_id: smartheatzones_boiler_runtime_today
+        state: >
+          {{ state_attr('sensor.boiler_runtime_today', 'value') | float(0) }}
+        unit_of_measurement: "h"
+        icon: mdi:fire-circle
+        attributes:
+          formatted: >
+            {% set total_minutes = state_attr('sensor.boiler_runtime_today', 'value') | float(0) %}
+            {% set hours = (total_minutes / 60) | int %}
+            {% set minutes = (total_minutes % 60) | int %}
+            {{ hours }}h {{ minutes }}m
+
+      # ========================================================================
+      # AVERAGE HEATING TIME PER ZONE
+      # ========================================================================
+
+      - name: "SmartHeatZones Average Heating Time"
+        unique_id: smartheatzones_average_heating_time
+        state: >
+          {% set sensors = [
+            'sensor.living_room_heating_time_today',
+            'sensor.bedroom_heating_time_today',
+            'sensor.kitchen_heating_time_today',
+            'sensor.bathroom_heating_time_today'
+          ] %}
+          {% set total = 0 %}
+          {% for sensor in sensors %}
+            {% set total = total + (state_attr(sensor, 'value') | float(0)) %}
+          {% endfor %}
+          {{ ((total / sensors | length) / 60) | round(2) }}
+        unit_of_measurement: "h"
+        icon: mdi:chart-timeline-variant
+
+      # ========================================================================
+      # ZONE TEMPERATURE DEVIATIONS (from target)
+      # ========================================================================
+
+      - name: "SmartHeatZones Living Room Temp Deviation"
+        unique_id: smartheatzones_living_room_deviation
+        state: >
+          {% set current = state_attr('climate.living_room', 'current_temperature') | float(0) %}
+          {% set target = state_attr('climate.living_room', 'temperature') | float(0) %}
+          {{ (current - target) | round(1) }}
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-lines
+
+      - name: "SmartHeatZones Bedroom Temp Deviation"
+        unique_id: smartheatzones_bedroom_deviation
+        state: >
+          {% set current = state_attr('climate.bedroom', 'current_temperature') | float(0) %}
+          {% set target = state_attr('climate.bedroom', 'temperature') | float(0) %}
+          {{ (current - target) | round(1) }}
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-lines
+
+      - name: "SmartHeatZones Kitchen Temp Deviation"
+        unique_id: smartheatzones_kitchen_deviation
+        state: >
+          {% set current = state_attr('climate.kitchen', 'current_temperature') | float(0) %}
+          {% set target = state_attr('climate.kitchen', 'temperature') | float(0) %}
+          {{ (current - target) | round(1) }}
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-lines
+
+      - name: "SmartHeatZones Bathroom Temp Deviation"
+        unique_id: smartheatzones_bathroom_deviation
+        state: >
+          {% set current = state_attr('climate.bathroom', 'current_temperature') | float(0) %}
+          {% set target = state_attr('climate.bathroom', 'temperature') | float(0) %}
+          {{ (current - target) | round(1) }}
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-lines
+
+      # ========================================================================
+      # BOILER CYCLE COUNT TODAY
+      # ========================================================================
+
+      - name: "SmartHeatZones Boiler Cycles Today"
+        unique_id: smartheatzones_boiler_cycles_today
+        state: >
+          {{ states('counter.boiler_cycles_today') | int(0) }}
+        icon: mdi:counter
+
+  # ==========================================================================
+  # BINARY SENSORS
+  # ==========================================================================
+
+  - binary_sensor:
+      - name: "SmartHeatZones Any Zone Heating"
+        unique_id: smartheatzones_any_zone_heating
+        state: >
+          {% set zones = [
+            'climate.living_room',
+            'climate.bedroom',
+            'climate.kitchen',
+            'climate.bathroom'
+          ] %}
+          {{ zones | select('is_state_attr', 'hvac_action', 'heating') | list | count > 0 }}
+        device_class: heat
+        icon: >
+          {% if is_state('binary_sensor.smartheatzones_any_zone_heating', 'on') %}
+            mdi:fire
+          {% else %}
+            mdi:fire-off
+          {% endif %}

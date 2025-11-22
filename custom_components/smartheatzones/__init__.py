@@ -1,6 +1,15 @@
 """
 SmartHeatZones - Multi-zone heating controller
-Version: 1.8.1
+Version: 1.9.0
+
+NEW in v1.9.0 (Feature Release):
+- NEW: Complete Lovelace Dashboard (Phase 1) with system monitoring
+- NEW: Template sensors for heating time tracking and statistics
+- NEW: History stats sensors for daily/weekly/monthly tracking
+- NEW: Multi-zone temperature graphs with ApexCharts integration
+- NEW: Boiler and zone activity timeline visualization
+- NEW: Daily heating statistics with bar chart comparisons
+- NEW: Comprehensive installation guide and documentation
 
 NEW in v1.8.1 (Feature + Bugfix):
 - NEW: Piggyback heating - when boiler turns on, all zones with temp < target turn on immediately

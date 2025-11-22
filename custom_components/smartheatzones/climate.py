@@ -1,7 +1,12 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.8.1 (HA 2025.10+ compatible)
+Version: 1.9.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+NEW in v1.9.0:
+- Lovelace Dashboard Phase 1 with comprehensive monitoring
+- Template sensors for statistics and tracking
+- No code changes to climate platform (dashboard is add-on)
 
 NEW in v1.8.1:
 - Piggyback heating: When boiler turns on, all zones with temp < target turn on immediately
