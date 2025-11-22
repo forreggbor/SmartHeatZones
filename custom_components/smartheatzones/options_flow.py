@@ -1,7 +1,12 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.7.0 (HA 2025.10+)
+Version: 1.8.1 (HA 2025.10+)
 Author: forreggbor
+
+NEW in v1.8.1:
+- Fixed outdoor sensor properly removed when cleared
+- Auto-disable adaptive hysteresis when no outdoor sensor
+- Improved data initialization from config entry
 
 NEW in v1.7.0:
 - Added thermostat type field to zone options
@@ -71,7 +76,8 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry):
         """Initialize."""
         self._entry = config_entry
-        self._data = dict(config_entry.options)
+        # Use options if available, otherwise fall back to data
+        self._data = dict(config_entry.options) if config_entry.options else dict(config_entry.data)
         _LOGGER.debug("[SmartHeatZones] OptionsFlow initialized for %s", config_entry.title)
 
     async def async_step_init(self, user_input=None):
@@ -94,6 +100,13 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug("[SmartHeatZones] Entered async_step_common_settings (options)")
 
         if user_input is not None:
+            # Clean up empty outdoor sensor before updating
+            if CONF_OUTDOOR_SENSOR in user_input and not user_input[CONF_OUTDOOR_SENSOR]:
+                user_input.pop(CONF_OUTDOOR_SENSOR, None)
+                # Disable adaptive hysteresis if no outdoor sensor configured
+                _LOGGER.info("[SmartHeatZones] No outdoor sensor configured, disabling adaptive hysteresis")
+                user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+
             self._data.update(user_input)
             _LOGGER.info("[SmartHeatZones] Common settings options updated")
             return await self._save_and_exit()

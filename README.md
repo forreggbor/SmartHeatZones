@@ -1,4 +1,4 @@
-# SmartHeatZones v1.7.0
+# SmartHeatZones v1.8.1
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 **Author:** forreggbor
-**Current Version:** 1.7.0
+**Current Version:** 1.8.1
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -17,7 +17,7 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [What's New in v1.6.0](#whats-new-in-v160)
+- [What's New in v1.8.1](#whats-new-in-v181)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Initial Setup](#initial-setup)
@@ -92,6 +92,32 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 - **Debug logging** - Comprehensive logging for troubleshooting
 - **State restoration** - Resumes operation after HA restart
 - **Better Thermostat compatible** - Works with existing automations
+
+---
+
+## What's New in v1.8.1
+
+### 🐛 Bugfix: Outdoor Sensor Now Truly Optional
+
+**Version 1.8.1 fixes critical issues with the outdoor temperature sensor configuration** that prevented it from being truly optional.
+
+#### Fixed Issues
+- **Outdoor sensor persistence** - Sensor field no longer reappears after being removed
+- **Empty string handling** - Properly removes outdoor sensor when cleared instead of storing empty value
+- **Adaptive hysteresis dependency** - Automatically disabled when no outdoor sensor is configured
+- **Data initialization** - Options flow now correctly loads existing configuration
+
+#### What Changed
+- `options_flow.py`: Enhanced common settings save logic to remove empty outdoor sensor
+- `options_flow.py`: Improved data initialization from config entry
+- `options_flow.py`: Auto-disable adaptive hysteresis when outdoor sensor is removed
+- `config_flow.py`: Same outdoor sensor cleanup logic applied to initial setup
+
+#### User Impact
+- You can now safely remove the outdoor sensor and it will stay removed
+- Adaptive hysteresis is automatically disabled when no outdoor sensor is present
+- You can add an outdoor sensor later when you purchase one - the field remains available
+- No migration required - fix applies automatically on next save
 
 ---
 
@@ -1090,7 +1116,37 @@ Contributions are welcome! Please:
 
 ## Changelog
 
-### v1.7.0 (Current - Feature Release)
+### v1.8.1 (Current - Bugfix Release)
+**Release Date:** November 22, 2025
+
+**🐛 Bug Fixes:**
+- **Fixed:** Outdoor sensor field now truly optional in common settings
+- **Fixed:** Outdoor sensor properly removed when cleared from configuration
+- **Fixed:** Adaptive hysteresis automatically disabled when no outdoor sensor configured
+- **Improved:** Options flow data initialization handles missing options gracefully
+
+**📝 Technical Changes:**
+- Enhanced `async_step_common_settings` to clean up empty outdoor sensor before saving
+- Improved `__init__` data loading to fall back to config_entry.data when options is empty
+- Auto-disable adaptive hysteresis when outdoor sensor is removed or cleared
+- Updated version to 1.8.1 across all files
+
+**⚙️ Files Modified:**
+- `options_flow.py` - Enhanced outdoor sensor cleanup logic
+- `config_flow.py` - Consistent outdoor sensor handling
+- `const.py` - Version bump and changelog update
+- `manifest.json` - Version 1.8.1
+- All other component files updated with version number
+
+**✨ User Benefits:**
+- Outdoor sensor can now be completely removed and stays removed
+- No more "sensor field keeps coming back" issue
+- Adaptive hysteresis correctly disabled without outdoor sensor
+- Can add outdoor sensor later without any issues
+
+---
+
+### v1.7.0 (Feature Release)
 **Release Date:** November 8, 2025
 
 **🎉 New Feature: Thermostat Type with Temperature Offset**

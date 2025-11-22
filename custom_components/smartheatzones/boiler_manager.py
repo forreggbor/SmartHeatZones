@@ -1,12 +1,15 @@
 """
 SmartHeatZones - Boiler Manager
-Version: 1.6.1 (unchanged from 1.5.x)
+Version: 1.8.1
 
 Central boiler relay coordinator - manages shared boiler switch across all zones.
+
+NEW in v1.8.1:
+- Piggyback heating: When boiler turns on, all zones with temp < target turn on immediately
 """
 
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -15,6 +18,9 @@ from .const import (
     DATA_ACTIVE_ZONES,
     LOG_PREFIX,
 )
+
+if TYPE_CHECKING:
+    from .climate import SmartHeatZoneClimate
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,17 +33,30 @@ class BoilerManager:
       - közös kazán relé kezelése (pl. switch.shelly_2pm_relay_1)
       - aktív zónák számlálása
       - redundáns kapcsolások elkerülése
+      - piggyback heating: más zónák bekapcsolása amikor a kazán már megy
     """
 
     def __init__(self, hass: HomeAssistant):
         self.hass = hass
         self._boiler_entity_id: Optional[str] = None
         self._active_zones: set[str] = set()
+        self._zone_entities: dict[str, "SmartHeatZoneClimate"] = {}
         _LOGGER.info("%s BoilerManager initialized", LOG_PREFIX)
 
     # --------------------------------------------------------------------------
     # Alapműveletek
     # --------------------------------------------------------------------------
+
+    def register_zone_entity(self, zone_name: str, entity: "SmartHeatZoneClimate"):
+        """Register a zone climate entity for piggyback heating."""
+        self._zone_entities[zone_name] = entity
+        _LOGGER.debug("%s Zone entity registered: %s", LOG_PREFIX, zone_name)
+
+    def unregister_zone_entity(self, zone_name: str):
+        """Unregister a zone climate entity."""
+        if zone_name in self._zone_entities:
+            del self._zone_entities[zone_name]
+            _LOGGER.debug("%s Zone entity unregistered: %s", LOG_PREFIX, zone_name)
 
     async def register_boiler(self, entity_id: str):
         """Kazán főkapcsoló regisztrálása."""
@@ -56,11 +75,15 @@ class BoilerManager:
         if entity_id and self._boiler_entity_id is None:
             await self.register_boiler(entity_id)
 
+        was_off = len(self._active_zones) == 0
         self._active_zones.add(zone)
         _LOGGER.debug("%s Zone '%s' requested boiler ON (active_zones=%d)", LOG_PREFIX, zone, len(self._active_zones))
 
-        if len(self._active_zones) == 1:
+        if was_off:
+            # Boiler is turning on - physically turn it on
             await self._call_boiler_service("turn_on")
+            # Trigger piggyback heating for all other zones
+            await self._trigger_piggyback_heating(initiating_zone=zone)
 
     async def turn_off(self, entity_id: Optional[str], zone: str):
         """Kazán kikapcsolása zónából."""
@@ -72,6 +95,27 @@ class BoilerManager:
         # Ha nincs több aktív zóna, akkor kapcsoljuk ki a kazánt
         if not self._active_zones:
             await self._call_boiler_service("turn_off")
+
+    # --------------------------------------------------------------------------
+    # Piggyback heating
+    # --------------------------------------------------------------------------
+
+    async def _trigger_piggyback_heating(self, initiating_zone: str):
+        """
+        Trigger piggyback heating check in all zones.
+
+        When boiler turns on, all zones should check if current_temp < target_temp
+        and turn on immediately without hysteresis or waiting for sensor update.
+        """
+        _LOGGER.info(
+            "%s Piggyback heating triggered by zone '%s' - checking all zones",
+            LOG_PREFIX, initiating_zone
+        )
+
+        for zone_name, zone_entity in self._zone_entities.items():
+            if zone_name != initiating_zone:
+                # Trigger piggyback check in other zones
+                await zone_entity.check_piggyback_heating()
 
     # --------------------------------------------------------------------------
     # Segédfüggvények

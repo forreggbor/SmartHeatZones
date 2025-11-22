@@ -1,7 +1,15 @@
 """
 SmartHeatZones - Constants
-Version: 1.7.0 (HA 2025.10+ compatible)
+Version: 1.8.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.8.1 (FEATURE + BUGFIX):
+- NEW: Piggyback heating - when boiler turns on, all zones with temp < target turn on immediately
+- NEW: No hysteresis or sensor wait during piggyback heating - instant activation for energy efficiency
+- Fixed: Outdoor sensor field now truly optional in common settings
+- Fixed: Outdoor sensor properly removed when cleared from settings
+- Fixed: Adaptive hysteresis automatically disabled when no outdoor sensor configured
+- Improved: Options flow data initialization handles missing options gracefully
 
 CHANGELOG v1.7.0 (FEATURE RELEASE):
 - NEW: Thermostat type selection (Wall vs Radiator)
@@ -34,7 +42,7 @@ CHANGELOG v1.5.1:
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.7.0"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.8.1"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 

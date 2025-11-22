@@ -1,6 +1,10 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.7.0
+Version: 1.8.1
+
+NEW in v1.8.1:
+- Fixed outdoor sensor field to be truly optional
+- Auto-disable adaptive hysteresis when no outdoor sensor
 
 NEW in v1.7.0:
 - Added thermostat type field to zone creation

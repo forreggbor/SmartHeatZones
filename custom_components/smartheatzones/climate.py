@@ -1,7 +1,12 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.7.0 (HA 2025.10+ compatible)
+Version: 1.8.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+NEW in v1.8.1:
+- Piggyback heating: When boiler turns on, all zones with temp < target turn on immediately
+- Zone entity registration with boiler manager for piggyback coordination
+- No hysteresis applied during piggyback heating - simple temp < target check
 
 NEW in v1.7.0:
 - Thermostat type selection (Wall vs Radiator)
@@ -233,6 +238,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         """Entity added to Home Assistant."""
         await super().async_added_to_hass()
 
+        # Register with boiler manager for piggyback heating
+        self._boiler.register_zone_entity(self.name, self)
+        _LOGGER.debug("%s [%s] Registered with boiler manager", LOG_PREFIX, self.name)
+
         # State restoration
         last_state = await self.async_get_last_state()
         if last_state:
@@ -311,6 +320,74 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.debug("%s [%s] Schedule tracker enabled", LOG_PREFIX, self.name)
 
         await self._evaluate_heating()
+
+    async def async_will_remove_from_hass(self):
+        """Entity removal - unregister from boiler manager."""
+        self._boiler.unregister_zone_entity(self.name)
+        _LOGGER.debug("%s [%s] Unregistered from boiler manager", LOG_PREFIX, self.name)
+        await super().async_will_remove_from_hass()
+
+    # ==================================================================================
+    # PIGGYBACK HEATING (v1.8.1)
+    # ==================================================================================
+
+    async def check_piggyback_heating(self):
+        """
+        Check if this zone should turn on due to piggyback heating.
+
+        Called when boiler turns on by another zone. This zone should turn on
+        immediately if current_temp < target_temp, without hysteresis and without
+        waiting for sensor update.
+        """
+        # Only piggyback if HVAC is in HEAT mode
+        if self._hvac_mode != HVACMode.HEAT:
+            _LOGGER.debug(
+                "%s [%s] Piggyback skipped - HVAC mode is %s",
+                LOG_PREFIX, self.name, self._hvac_mode
+            )
+            return
+
+        # Already heating - no action needed
+        if self._is_heating:
+            _LOGGER.debug(
+                "%s [%s] Piggyback skipped - already heating",
+                LOG_PREFIX, self.name
+            )
+            return
+
+        # No temperature reading yet
+        if self._current_temp is None:
+            _LOGGER.debug(
+                "%s [%s] Piggyback skipped - no temperature reading",
+                LOG_PREFIX, self.name
+            )
+            return
+
+        # Check door/window sensors
+        for door in self._door_sensors:
+            state = self.hass.states.get(door)
+            if state and state.state == "on":
+                _LOGGER.debug(
+                    "%s [%s] Piggyback skipped - door/window open",
+                    LOG_PREFIX, self.name
+                )
+                return
+
+        # Simple check: current < target (NO hysteresis)
+        adjusted_target = self._get_adjusted_target_temp()
+
+        if self._current_temp < adjusted_target:
+            _LOGGER.info(
+                "%s [%s] PIGGYBACK HEATING! Current=%.2f°C < Adjusted Target=%.2f°C → Turning ON",
+                LOG_PREFIX, self.name, self._current_temp, adjusted_target
+            )
+            await self._set_heating(True, reason="Piggyback heating (boiler already running)")
+        else:
+            _LOGGER.debug(
+                "%s [%s] Piggyback not needed - current=%.2f°C >= target=%.2f°C",
+                LOG_PREFIX, self.name, self._current_temp, adjusted_target
+            )
+
     # ==================================================================================
     # EVENT-BASED RELAY MONITORING
     # ==================================================================================

@@ -1,6 +1,18 @@
 """
 SmartHeatZones - Multi-zone heating controller
-Version: 1.6.1
+Version: 1.8.1
+
+NEW in v1.8.1 (Feature + Bugfix):
+- NEW: Piggyback heating - when boiler turns on, all zones with temp < target turn on immediately
+- NEW: No hysteresis or sensor wait during piggyback - energy efficient opportunistic heating
+- Fixed: Outdoor sensor field now truly optional in common settings
+- Fixed: Outdoor sensor properly removed when cleared from settings
+- Fixed: Adaptive hysteresis automatically disabled when no outdoor sensor configured
+- Improved: Options flow data initialization handles missing options gracefully
+
+NEW in v1.7.0:
+- Added thermostat type selection (Wall vs Radiator)
+- Added temperature offset for radiator thermostats
 
 NEW in v1.6.1 (Bugfix):
 - Fixed: Common settings deletion now properly blocked when zones exist
