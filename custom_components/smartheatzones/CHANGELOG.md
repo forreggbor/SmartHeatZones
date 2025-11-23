@@ -36,6 +36,44 @@ The deletion logic in both `config_flow.py` and `options_flow.py` has been updat
 This update is fully backward compatible.  
 All existing configurations continue working without modification.
 
+## Version 1.9.0 (2025-11-22) – Feature Release
+
+### 🎉 Major Feature – Lovelace Dashboard (Phase 1 & 2)
+- Complete 10-card dashboard: status, daily stats, multi-zone graph, timelines, per-zone controls, piggyback performance, efficiency score, weekly/monthly comparison, cost estimation, comfort analytics.
+- 35+ new sensors/counters for heating time, piggyback events, efficiency, cost, and comfort scoring.
+- Phase 1/2 helper + template YAML, Lovelace card bundles, and installation guides added under `docs/lovelace/`.
+
+### 🧭 Notes
+- Dashboard is additive; core heating logic unchanged.
+- Requires ApexCharts Card (and Bar Card optionally) via HACS.
+
+## Version 1.8.1 (2025-11-22) – Feature + Bugfix Release
+
+### ✨ New Feature – Piggyback Heating
+- When any zone starts the boiler, all zones below target heat immediately (no hysteresis) for energy-efficient piggybacking.
+- Zone registration with boiler manager ensures coordinated starts.
+
+### 🐛 Bug Fixes – Outdoor Sensor Optionality
+- Outdoor sensor can now be removed cleanly; options flow initializes correctly and adaptive hysteresis auto-disables when sensor is absent.
+- Updated `boiler_manager.py`, `climate.py`, `options_flow.py`, `config_flow.py`, `const.py`, `manifest.json`, `__init__.py`.
+
+## Version 1.8.0 (2025-11-18) – Feature Release
+
+### 🎯 New Feature – Tempering Heating
+- Common Settings toggle to let zones “piggyback” within hysteresis dead-band: other zones below target join while boiler is already running, reducing cycles.
+- Climate logic adds `_is_any_other_zone_heating()` and exposes `tempering_heating_enabled` attribute; new constants and translations added.
+- Config/Options flows updated with the tempering toggle; manifest bumped.
+
+### 🐛 Included Fixes (v1.7.1)
+- Outdoor sensor truly optional; adaptive hysteresis auto-disables when sensor missing in both setup and options flows.
+
+## Version 1.7.0 (2025-11-08) – Feature Release
+
+### 🎉 New Feature – Thermostat Type with Temperature Offset
+- Per-zone thermostat type selector (Wall vs Radiator) with adjustable temperature offset to correct TRV readings.
+- Climate logic uses adjusted targets for heating evaluation, auto restart, and exposes new attributes; new constants/defaults added.
+- Zone creation/options forms updated; translations and manifest bumped to 1.7.0.
+
 ## Version 1.6.1 (2025-10-28) - Bugfix Release
 
 ### 🐛 Critical Bug Fixes
