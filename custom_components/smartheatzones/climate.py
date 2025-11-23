@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.9.0 (HA 2025.10+ compatible)
+Version: 1.9.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.9.1 (BUGFIX)
+- Fixed: Removing the outdoor temperature sensor is not removed from settings
 
 NEW in v1.9.0:
 - Lovelace Dashboard Phase 1 with comprehensive monitoring

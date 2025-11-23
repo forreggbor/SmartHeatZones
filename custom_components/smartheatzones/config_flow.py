@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.9.0
+Version: 1.9.1
+
+CHANGELOG v1.9.1 (BUGFIX)
+- Fixed: Removing the outdoor temperature sensor is not removed from settings
 
 NEW in v1.9.0:
 - Lovelace Dashboard Phase 1 (no changes to config flow)
@@ -99,9 +102,14 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["boiler_main"] = "boiler_required"
             
             if not errors:
-                # Clean up empty outdoor sensor (makes it truly optional)
-                if CONF_OUTDOOR_SENSOR in user_input and not user_input[CONF_OUTDOOR_SENSOR]:
+                # --- FIX: Handle outdoor sensor removal correctly ---
+                outdoor_value = user_input.get(CONF_OUTDOOR_SENSOR)
+                if outdoor_value in ("", None):
+                # Remove field entirely – HA treats missing key as "not configured"
                     user_input.pop(CONF_OUTDOOR_SENSOR, None)
+                # Disable adaptive hysteresis automatically
+                    user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+                # -----------------------------------------------
 
                 # Disable adaptive hysteresis if no outdoor sensor configured
                 if CONF_OUTDOOR_SENSOR not in user_input:

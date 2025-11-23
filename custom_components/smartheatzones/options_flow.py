@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.9.0 (HA 2025.10+)
+Version: 1.9.1 (HA 2025.10+)
 Author: forreggbor
+
+CHANGELOG v1.9.1 (BUGFIX)
+- Fixed: Removing the outdoor temperature sensor is not removed from settings
 
 NEW in v1.9.0:
 - Lovelace Dashboard Phase 1 (no changes to options flow)
@@ -103,12 +106,15 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug("[SmartHeatZones] Entered async_step_common_settings (options)")
 
         if user_input is not None:
-            # Clean up empty outdoor sensor before updating
-            if CONF_OUTDOOR_SENSOR in user_input and not user_input[CONF_OUTDOOR_SENSOR]:
+            # --- FIX: Correct deletion logic for optional outdoor sensor ---
+            outdoor_value = user_input.get(CONF_OUTDOOR_SENSOR)
+            if outdoor_value in ("", None):
+            # Remove key from config: HA treats missing selector key as unset
                 user_input.pop(CONF_OUTDOOR_SENSOR, None)
-                # Disable adaptive hysteresis if no outdoor sensor configured
-                _LOGGER.info("[SmartHeatZones] No outdoor sensor configured, disabling adaptive hysteresis")
+            # Disable adaptive hysteresis, because outdoor sensor is required for it
+                _LOGGER.info("[SmartHeatZones] Outdoor sensor removed → disabling adaptive hysteresis")
                 user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+            # --------------------------------------------------------------
 
             self._data.update(user_input)
             _LOGGER.info("[SmartHeatZones] Common settings options updated")

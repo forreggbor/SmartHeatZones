@@ -1,5 +1,41 @@
 # SmartHeatZones Changelog
 
+## Version 1.9.1 (2025-11-23) – Bugfix Release
+
+### 🐛 Critical Bug Fixes – Outdoor Sensor Removal
+
+This release fixes a long-standing issue in the Common Settings configuration:
+
+- **Outdoor temperature sensor was not fully removable**
+  - Root cause: Home Assistant’s `EntitySelector` returns `None` instead of an empty string when a field is cleared.
+  - Previous logic checked only for empty strings → the field remained stored in `config_entry.options`, preventing removal.
+
+- **Adaptive hysteresis was not automatically disabled when the outdoor sensor was removed**
+  - Because the stale value remained in settings, the system incorrectly assumed the sensor was still configured.
+
+### ✔️ Fix Details
+
+The deletion logic in both `config_flow.py` and `options_flow.py` has been updated:
+
+- Correctly handles `None` values returned by the selector  
+- Removes `CONF_OUTDOOR_SENSOR` entirely when cleared  
+- Automatically disables adaptive hysteresis  
+- Ensures consistent behavior across initial setup and option editing
+
+### 🔧 Files Changed
+- `config_flow.py`
+- `options_flow.py`
+
+### 🧪 Testing
+- Verified UI correctly removes outdoor sensor
+- Confirmed adaptive hysteresis disables automatically when sensor is removed
+- Re-tested full common settings cycle (add → save → clear → re-save)
+- Confirmed zone-level adaptive hysteresis logic works correctly with missing sensor
+
+### ⚠️ No breaking changes
+This update is fully backward compatible.  
+All existing configurations continue working without modification.
+
 ## Version 1.6.1 (2025-10-28) - Bugfix Release
 
 ### 🐛 Critical Bug Fixes

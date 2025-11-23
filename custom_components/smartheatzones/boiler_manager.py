@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Boiler Manager
-Version: 1.9.0
+Version: 1.9.1
+
+CHANGELOG v1.9.1 (BUGFIX)
+- Fixed: Removing the outdoor temperature sensor is not removed from settings
 
 Central boiler relay coordinator - manages shared boiler switch across all zones.
 

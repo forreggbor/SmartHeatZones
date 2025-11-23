@@ -1,4 +1,4 @@
-# SmartHeatZones v1.9.0
+# SmartHeatZones v1.9.1
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 **Author:** forreggbor
-**Current Version:** 1.9.0
+**Current Version:** 1.9.1
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -17,6 +17,7 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [What's New in v1.9.1](#whats-new-in-v191)
 - [What's New in v1.9.0](#whats-new-in-v190)
 - [What's New in v1.8.1](#whats-new-in-v181)
 - [What's New in v1.8.0](#whats-new-in-v180)
@@ -96,6 +97,13 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 - **Debug logging** - Comprehensive logging for troubleshooting
 - **State restoration** - Resumes operation after HA restart
 - **Better Thermostat compatible** - Works with existing automations
+
+---
+
+### What's New in v1.9.1
+
+#### Fixed issue v1.9.1 (BUGFIX)
+- Removing the outdoor temperature sensor is not removed from settings
 
 ---
 

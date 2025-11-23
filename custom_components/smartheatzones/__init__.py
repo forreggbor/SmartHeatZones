@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Multi-zone heating controller
-Version: 1.9.0
+Version: 1.9.1
+
+CHANGELOG v1.9.1 (BUGFIX)
+- Fixed: Removing the outdoor temperature sensor is not removed from settings
 
 NEW in v1.9.0 (Feature Release):
 - NEW: Complete Lovelace Dashboard (Phase 1) with system monitoring

@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Constants
-Version: 1.9.0 (HA 2025.10+ compatible)
+Version: 1.9.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.9.1 (BUGFIX)
+- Fixed: Removing the outdoor temperature sensor is not removed from settings
 
 CHANGELOG v1.9.0 (FEATURE RELEASE):
 - NEW: Complete Lovelace Dashboard (Phase 1) with system monitoring
@@ -51,7 +54,7 @@ CHANGELOG v1.5.1:
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.9.0"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.9.1"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
