@@ -1,14 +1,20 @@
 {
   "domain": "smartheatzones",
   "name": "Smart Heat Zones",
-  "version": "1.10.0",
+  "after_dependencies": [
+    "switch",
+    "sensor",
+    "binary_sensor"
+  ],
+  "codeowners": [
+    "@forreggbor"
+  ],
+  "config_flow": true,
+  "dependencies": [],
   "documentation": "https://github.com/forreggbor/SmartHeatZones",
+  "integration_type": "device",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/forreggbor/SmartHeatZones/issues",
   "requirements": [],
-  "dependencies": [],
-  "after_dependencies": ["switch", "sensor", "binary_sensor"],
-  "codeowners": ["@forreggbor"],
-  "iot_class": "local_push",
-  "integration_type": "device",
-  "config_flow": true
+  "version": "1.10.0"
 }

@@ -133,43 +133,39 @@
         "wall": "🏠 Wall Thermostat",
         "radiator": "🌡️ Radiator Thermostat"
       }
-    },
-    "adaptive": {
-      "state": {
-        "on": "ON",
-        "off": "OFF"
-      }
     }
   },
   "entity": {
     "climate": {
-      "state": {
-        "off": "Off",
-        "heat": "Heat"
-      },
-      "state_attributes": {
-        "preset_mode": {
-          "name": "Preset Mode",
-          "state": {
-            "auto": "Auto",
-            "manual": "Manual",
-            "comfort": "Comfort",
-            "eco": "Eco",
-            "away": "Away"
-          }
+      "zone": {
+        "state": {
+          "off": "Off",
+          "heat": "Heat"
         },
-        "heating_mode": {
-          "name": "Heating Mode",
-          "state": {
-            "radiator": "Radiator",
-            "underfloor": "Underfloor"
-          }
-        },
-        "thermostat_type": {
-          "name": "Thermostat Type",
-          "state": {
-            "wall": "Wall Thermostat",
-            "radiator": "Radiator Thermostat"
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Preset Mode",
+            "state": {
+              "auto": "Auto",
+              "manual": "Manual",
+              "comfort": "Comfort",
+              "eco": "Eco",
+              "away": "Away"
+            }
+          },
+          "heating_mode": {
+            "name": "Heating Mode",
+            "state": {
+              "radiator": "Radiator",
+              "underfloor": "Underfloor"
+            }
+          },
+          "thermostat_type": {
+            "name": "Thermostat Type",
+            "state": {
+              "wall": "Wall Thermostat",
+              "radiator": "Radiator Thermostat"
+            }
           }
         }
       }

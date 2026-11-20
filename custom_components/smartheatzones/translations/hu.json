@@ -133,43 +133,39 @@
         "wall": "🏠 Fali termosztát",
         "radiator": "🌡️ Radiátor termosztát"
       }
-    },
-    "adaptive": {
-      "state": {
-        "on": "BE",
-        "off": "KI"
-      }
     }
   },
   "entity": {
     "climate": {
-      "state": {
-        "off": "Kikapcsolva",
-        "heat": "Fűtés"
-      },
-      "state_attributes": {
-        "preset_mode": {
-          "name": "Üzemmód",
-          "state": {
-            "auto": "Automatikus",
-            "manual": "Kézi",
-            "comfort": "Komfort",
-            "eco": "Eco",
-            "away": "Távol"
-          }
+      "zone": {
+        "state": {
+          "off": "Kikapcsolva",
+          "heat": "Fűtés"
         },
-        "heating_mode": {
-          "name": "Fűtési mód",
-          "state": {
-            "radiator": "Radiátor",
-            "underfloor": "Padlófűtés"
-          }
-        },
-        "thermostat_type": {
-          "name": "Termosztát típusa",
-          "state": {
-            "wall": "Fali termosztát",
-            "radiator": "Radiátor termosztát"
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Üzemmód",
+            "state": {
+              "auto": "Automatikus",
+              "manual": "Kézi",
+              "comfort": "Komfort",
+              "eco": "Eco",
+              "away": "Távol"
+            }
+          },
+          "heating_mode": {
+            "name": "Fűtési mód",
+            "state": {
+              "radiator": "Radiátor",
+              "underfloor": "Padlófűtés"
+            }
+          },
+          "thermostat_type": {
+            "name": "Termosztát típusa",
+            "state": {
+              "wall": "Fali termosztát",
+              "radiator": "Radiátor termosztát"
+            }
           }
         }
       }
