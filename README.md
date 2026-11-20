@@ -1,14 +1,14 @@
-# SmartHeatZones v1.9.1
+# SmartHeatZones v1.10.0
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
 [![GitHub Release](https://img.shields.io/github/v/release/forreggbor/SmartHeatZones?style=flat-square)](https://github.com/forreggbor/SmartHeatZones/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.10%2B-blue?style=flat-square)](https://www.home-assistant.io/)
-[![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
+[![Open in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=SmartHeatZones&category=integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 **Author:** forreggbor
-**Current Version:** 1.9.1
+**Current Version:** 1.10.0
 **Minimum HA Version:** 2025.10+
 
 ---
@@ -344,21 +344,18 @@ SmartHeatZones uses a **hub-and-spoke architecture**:
 
 ## Installation
 
-### Method 1: HACS (Recommended)
+### Method 1: Marketplace / HACS (Recommended)
 
-1. **Add custom repository:**
-   - Open HACS in Home Assistant
-   - Click on "Integrations"
-   - Click the three dots menu (⋮) in the top right
-   - Select "Custom repositories"
-   - Add repository URL: `https://github.com/forreggbor/SmartHeatZones`
-   - Category: Integration
-   - Click "Add"
+1. **Find the integration:**
+   - Home Assistant 2026.11 or newer: open **Settings > Marketplace** and search for "Smart Heat Zones"
+   - Older versions: open HACS, then "Integrations" and search for "Smart Heat Zones"
+   - If it is not listed yet, add it from its GitHub link: **Custom repositories > Add from a GitHub link**
+     (in HACS: the three dots menu (⋮) > "Custom repositories"), URL
+     `https://github.com/forreggbor/SmartHeatZones`, category: Integration
+   - The button at the top of this page opens the repository in your Home Assistant
 
 2. **Install SmartHeatZones:**
-   - Search for "Smart Heat Zones" in HACS
-   - Click "Download"
-   - Select the latest version
+   - Click "Download" and select the latest version
    - Restart Home Assistant
 
 ### Method 2: Manual Installation

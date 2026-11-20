@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.9.1 (HA 2025.10+ compatible)
+Version: 1.10.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.10.0 (FEATURE)
+- Added: preset_temperatures state attribute (comfort/eco/away targets) for dashboard cards
 
 CHANGELOG v1.9.1 (BUGFIX)
 - Fixed: Removing the outdoor temperature sensor is not removed from settings
@@ -870,6 +873,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             "adjusted_target_temp": self._get_adjusted_target_temp(),
             "overheat_protection": self._overheat_temp,
             "base_hysteresis": self._base_hysteresis,
+            "preset_temperatures": dict(PRESET_TEMPERATURES),
         }
 
         if self._adaptive_hysteresis_enabled and self._outdoor_temp is not None:

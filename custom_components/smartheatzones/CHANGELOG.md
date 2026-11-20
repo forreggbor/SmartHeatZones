@@ -1,5 +1,20 @@
 # SmartHeatZones Changelog
 
+## Version 1.10.0 (2026-11-20) – Feature Release
+
+| Category | Description |
+|----------|-------------|
+| Added    | The preset temperatures are available as an entity attribute for dashboard cards |
+| Added    | The integration meets the requirements of the Home Assistant Marketplace and HACS |
+
+### Added
+
+- Each zone now reports its preset temperatures (comfort, eco, away) as the `preset_temperatures` attribute of its climate entity. Dashboard cards can read the values from the entity instead of having them typed in by hand, and they follow automatically when the presets change.
+- The integration is prepared for the default catalog of the Home Assistant Marketplace and HACS: it has a license file, its own icon in the format Home Assistant expects, and the repository is checked automatically on every change. The README explains how to install it from the Marketplace.
+
+### No breaking changes
+This update only adds an attribute. All existing configurations continue working without modification.
+
 ## Version 1.9.1 (2025-11-23) – Bugfix Release
 
 ### 🐛 Critical Bug Fixes – Outdoor Sensor Removal

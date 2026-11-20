@@ -1,4 +1,9 @@
 /archive/
 /doc/
 /.idea/
-/.github/
+/.github/*
+!/.github/workflows/
+!/.github/ISSUE_TEMPLATE/
+/docs/lovelace/
+/docs/DEV-ROADMAP.md
+/docs/LOVELACE_DASHBOARD_PROPOSAL.md
