@@ -77,6 +77,12 @@ Each zone options screen shows:
 - Should be positioned at representative location (not near heat sources)
 - Example: `sensor.living_room_temperature`
 
+**Sensor Silence Limit** (hours, default 2, range 0.5 to 24)
+- Safety setting of the zone: if the zone temperature sensor sends nothing for this long, the heating of this zone is switched off until the sensor reports again
+- The same default (2 hours) applies to radiators and underfloor heating. Keep it short for underfloor heating, because the floor keeps warming for as long as the heating stays on
+- Raise it only for a sensor that reports rarely. A Zigbee sensor usually reports at least every one or two hours, check its real reporting interval before you raise the limit
+- Details: [Fail-safe and error handling](advanced-features.md#fail-safe-and-error-handling)
+
 **Zone Relays** (REQUIRED, Multiple Allowed)
 - Select one or more switches that control this zone
 - Can control pumps, valves, or both

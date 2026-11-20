@@ -135,9 +135,9 @@ SmartHeatZones never keeps heating on the strength of a sensor it cannot trust.
 | Situation | What happens |
 |-----------|--------------|
 | The zone temperature sensor is `unavailable`, `unknown` or not a number for **10 minutes** | The zone's relays are switched off, the boiler is released, and the zone reports `sensor_fault: sensor_unavailable`. The current temperature shows as unknown, and the zone cannot start by piggyback heating. |
-| The sensor still shows a number but has **not reported anything for 2 hours** (for example a dead battery that leaves the last value in place) | Same as above, with `sensor_fault: sensor_stale`. |
+| The sensor still shows a number but has **not reported anything for the zone's silence limit** (zone setting, **2 hours** by default; for example a dead battery that leaves the last value in place) | Same as above, with `sensor_fault: sensor_stale`. |
 | The sensor is back | Normal control resumes by itself and `sensor_fault` is cleared. |
 | A relay or the boiler switch does not accept a command | The error is logged and the command is retried every minute, as long as it is still the wanted one. The zone lists the relays in the `relay_fault` attribute. A newer decision or a manual switch cancels the retry, so a manual switch is never overridden. |
 | Home Assistant restarts while a relay is on | The zone takes over the real relay state, so it can still switch that relay off. |
 
-The timeouts are the constants `SENSOR_UNAVAILABLE_GRACE`, `SENSOR_STALE_TIMEOUT` and `WATCHDOG_INTERVAL` in `const.py`. Use the `sensor_fault` and `relay_fault` attributes of the zone's climate entity in automations or on the dashboard to be notified.
+The silence limit is set per zone in the zone settings (**Sensor silence limit**, 0.5 to 24 hours, default 2 hours). The 10 minute tolerance for an unavailable sensor and the one minute check interval are the constants `SENSOR_UNAVAILABLE_GRACE` and `WATCHDOG_INTERVAL` in `const.py`. Use the `sensor_fault` and `relay_fault` attributes of the zone's climate entity in automations or on the dashboard to be notified. The attribute `sensor_stale_hours` shows the limit in use.

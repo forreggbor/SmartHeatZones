@@ -31,6 +31,7 @@
           "thermostat_type": "Thermostat type",
           "temp_offset": "Temperature offset (°C)",
           "sensor_entity_id": "Zone temperature sensor",
+          "sensor_stale_hours": "Sensor silence limit (hours)",
           "relay_entities": "Zone relays",
           "door_sensors": "Door / window sensors"
         },
@@ -40,6 +41,7 @@
           "thermostat_type": "Wall thermostat (accurate measurement) or radiator thermostat (measures higher temperature)",
           "temp_offset": "Temperature compensation for radiator thermostats - added to target temperature (default: 3°C)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
+          "sensor_stale_hours": "Safety: heating in this zone is switched off if the temperature sensor sends nothing for this long (default: 2 h). Raise it only for sensors that report rarely.",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)"
         }
@@ -87,6 +89,7 @@
           "thermostat_type": "Thermostat type",
           "temp_offset": "Temperature offset (°C)",
           "sensor_entity_id": "Zone temperature sensor",
+          "sensor_stale_hours": "Sensor silence limit (hours)",
           "relay_entities": "Zone relays",
           "door_sensors": "Door / window sensors",
           "label_1": "Period 1 name",
@@ -111,6 +114,7 @@
           "thermostat_type": "Wall thermostat (accurate measurement) or radiator thermostat (measures higher temperature)",
           "temp_offset": "Temperature compensation for radiator thermostats - added to target temperature (default: 3°C)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
+          "sensor_stale_hours": "Safety: heating in this zone is switched off if the temperature sensor sends nothing for this long (default: 2 h). Raise it only for sensors that report rarely.",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)",
           "label_1": "Period name (e.g. Night, Morning, Day, Evening)",

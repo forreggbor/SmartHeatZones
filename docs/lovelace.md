@@ -1,6 +1,40 @@
 # Lovelace UI
 
-### Recommended Card Setup
+## Recommended: GlowStat cards
+
+[GlowStat](https://github.com/forreggbor/ha-GlowStat) is our own dashboard card and the recommended way to show the zones. It is built for the entities of this integration:
+
+- **Climate card** (`custom:glowstat-climate-card`) for a zone: target temperature with `+` / `-`, the current temperature, the state (heating or idle) and the preset buttons. The glow follows what the zone does and pulses while it is heating.
+- **Thermometer card** (`custom:glowstat-thermometer-card`) for the zone sensor: temperature, humidity, battery, a history graph and a trend arrow.
+- The preset temperatures (comfort, eco, away) under the preset buttons come from the zone's `preset_temperatures` attribute, so they follow the integration. This needs SmartHeatZones 1.10.0 or newer and GlowStat 0.3.0 or newer.
+- Texts are available in English and Hungarian, and both cards have an editor in the dashboard, no YAML is needed.
+
+[![Open GlowStat in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=ha-GlowStat&category=plugin)
+
+**Setup:**
+1. Install GlowStat from the Marketplace (**Settings > Marketplace**, search for "GlowStat", or use the button above) and reload the browser.
+2. In the dashboard editor add a card, search for "GlowStat", pick the climate card and select the zone's climate entity. The preset buttons are found automatically.
+3. Optionally add the thermometer card for the zone sensor next to it.
+
+The same in YAML, for a zone with its temperature sensor:
+
+```yaml
+type: grid
+columns: 2
+cards:
+  - type: custom:glowstat-climate-card
+    entity: climate.ground_floor_heating
+    name: Ground Floor
+  - type: custom:glowstat-thermometer-card
+    entity: sensor.ground_floor_temperature
+    name: Ground Floor
+```
+
+See the [GlowStat documentation](https://github.com/forreggbor/ha-GlowStat#readme) for all options, such as the language, the history length or the comfort range.
+
+---
+
+## Alternative: button-card template
 
 See the detailed [button-card template guide](lovelace-button-card-template.md) for complete instructions and customization options.
 

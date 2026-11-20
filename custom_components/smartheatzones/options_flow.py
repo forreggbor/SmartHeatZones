@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.9.1 (HA 2025.10+)
+Version: 1.11.0 (HA 2025.10+)
 Author: forreggbor
+
+CHANGELOG v1.11.0 (FEATURE)
+- Added: sensor silence limit field in the zone options
 
 CHANGELOG v1.9.1 (BUGFIX)
 - Fixed: Removing the outdoor temperature sensor is not removed from settings
@@ -45,6 +48,7 @@ from .const import (
     CONF_HEATING_MODE,
     CONF_THERMOSTAT_TYPE,
     CONF_TEMP_OFFSET,
+    CONF_SENSOR_STALE_HOURS,
     CONF_IS_COMMON_SETTINGS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
@@ -52,6 +56,9 @@ from .const import (
     DEFAULT_HEATING_MODE,
     DEFAULT_THERMOSTAT_TYPE,
     DEFAULT_TEMP_OFFSET,
+    DEFAULT_SENSOR_STALE_HOURS,
+    MIN_SENSOR_STALE_HOURS,
+    MAX_SENSOR_STALE_HOURS,
     HEATING_MODES,
     THERMOSTAT_TYPES,
     DATA_COMMON_SETTINGS,
@@ -268,6 +275,18 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                     default=self._data.get(CONF_SENSOR, "")
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
+                ),
+
+                # Sensor silence limit (v1.10.2): fail-safe when the zone sensor goes quiet
+                vol.Optional(
+                    CONF_SENSOR_STALE_HOURS,
+                    default=self._data.get(CONF_SENSOR_STALE_HOURS, DEFAULT_SENSOR_STALE_HOURS)
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_SENSOR_STALE_HOURS, max=MAX_SENSOR_STALE_HOURS, step=0.5,
+                        unit_of_measurement="h",
+                        mode="box"
+                    )
                 ),
 
                 # Zone relays

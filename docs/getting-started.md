@@ -58,6 +58,7 @@ Once common settings exist, you can create zones:
      - 🔥 Radiator (uses hysteresis)
      - 🌡️ Underfloor Heating (instant switching)
    - **Zone temperature sensor** (REQUIRED): Temperature sensor for this zone
+   - **Sensor silence limit** (default 2 hours): Safety limit, see [Fail-safe](advanced-features.md#fail-safe-and-error-handling)
    - **Zone relays** (REQUIRED): One or more switches controlling this zone
    - **Door/window sensors** (OPTIONAL): Pause heating when open
 

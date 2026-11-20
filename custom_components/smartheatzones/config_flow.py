@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.9.1
+Version: 1.11.0
+
+CHANGELOG v1.11.0 (FEATURE)
+- Added: sensor silence limit field in the zone form
 
 CHANGELOG v1.9.1 (BUGFIX)
 - Fixed: Removing the outdoor temperature sensor is not removed from settings
@@ -42,6 +45,7 @@ from .const import (
     CONF_HEATING_MODE,
     CONF_THERMOSTAT_TYPE,
     CONF_TEMP_OFFSET,
+    CONF_SENSOR_STALE_HOURS,
     CONF_IS_COMMON_SETTINGS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
@@ -49,6 +53,9 @@ from .const import (
     DEFAULT_HEATING_MODE,
     DEFAULT_THERMOSTAT_TYPE,
     DEFAULT_TEMP_OFFSET,
+    DEFAULT_SENSOR_STALE_HOURS,
+    MIN_SENSOR_STALE_HOURS,
+    MAX_SENSOR_STALE_HOURS,
     HEATING_MODES,
     THERMOSTAT_TYPES,
     COMMON_SETTINGS_TITLE,
@@ -224,6 +231,16 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 vol.Optional(CONF_SENSOR): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
+                ),
+                vol.Optional(
+                    CONF_SENSOR_STALE_HOURS,
+                    default=DEFAULT_SENSOR_STALE_HOURS
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_SENSOR_STALE_HOURS, max=MAX_SENSOR_STALE_HOURS, step=0.5,
+                        unit_of_measurement="h",
+                        mode="box"
+                    )
                 ),
                 vol.Optional(CONF_ZONE_RELAYS): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="switch", multiple=True)

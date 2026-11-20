@@ -1,7 +1,11 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.10.1 (HA 2025.10+ compatible)
+Version: 1.11.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.11.0 (FEATURE)
+- Added: the sensor silence limit is a per-zone setting (default 2 h) and shown as sensor_stale_hours
+- Fixed: schedule timer and state listeners are removed with the entity (no duplicate commands after a reload)
 
 CHANGELOG v1.10.1 (SAFETY FIX)
 - Fixed: heating is switched off when the temperature sensor is lost (unavailable 10 min / silent 2 h)
@@ -104,7 +108,10 @@ from .const import (
     ERR_OVERHEAT,
     SENSOR_BAD_STATES,
     SENSOR_UNAVAILABLE_GRACE,
-    SENSOR_STALE_TIMEOUT,
+    CONF_SENSOR_STALE_HOURS,
+    DEFAULT_SENSOR_STALE_HOURS,
+    MIN_SENSOR_STALE_HOURS,
+    MAX_SENSOR_STALE_HOURS,
     WATCHDOG_INTERVAL,
 )
 
@@ -144,6 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     thermostat_type = zone_data.get(CONF_THERMOSTAT_TYPE, DEFAULT_THERMOSTAT_TYPE)
     temp_offset = zone_data.get(CONF_TEMP_OFFSET, DEFAULT_TEMP_OFFSET)
     schedule = zone_data.get(CONF_SCHEDULE, [])
+    sensor_stale_hours = zone_data.get(CONF_SENSOR_STALE_HOURS, DEFAULT_SENSOR_STALE_HOURS)
     
     if not schedule:
         _LOGGER.warning(
@@ -177,6 +185,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         relay_entities=relays,
         door_sensors=doors,
         schedule=schedule,
+        sensor_stale_hours=sensor_stale_hours,
         boiler_entity=boiler_entity,
         hysteresis=hysteresis,
         overheat_temp=overheat_temp,
@@ -211,6 +220,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         relay_entities: list[str],
         door_sensors: list[str],
         schedule: list,
+        sensor_stale_hours: float,
         boiler_entity: Optional[str],
         hysteresis: float,
         overheat_temp: float,
@@ -230,6 +240,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self._relay_entities = relay_entities or []
         self._door_sensors = door_sensors or []
         self._schedule = schedule or []
+        self._sensor_stale_timeout = self._stale_timeout_from(sensor_stale_hours)
 
         # Common settings (from common entry)
         self._boiler_entity = boiler_entity
@@ -296,10 +307,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         # Temperature sensor tracking
         if self._sensor_entity_id:
-            async_track_state_change_event(
-                self.hass,
-                [self._sensor_entity_id],
-                self._sensor_changed,
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [self._sensor_entity_id],
+                    self._sensor_changed,
+                )
             )
 
             sensor_state = self.hass.states.get(self._sensor_entity_id)
@@ -313,10 +326,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         # Event-based relay monitoring
         if self._relay_entities:
             for relay_id in self._relay_entities:
-                async_track_state_change_event(
-                    self.hass,
-                    [relay_id],
-                    self._relay_state_changed,
+                self.async_on_remove(
+                    async_track_state_change_event(
+                        self.hass,
+                        [relay_id],
+                        self._relay_state_changed,
+                    )
                 )
             _LOGGER.info(
                 "%s [%s] Event-based relay monitoring enabled for %d relays",
@@ -325,10 +340,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         # Outdoor sensor tracking
         if self._outdoor_sensor and self._adaptive_hysteresis_enabled:
-            async_track_state_change_event(
-                self.hass,
-                [self._outdoor_sensor],
-                self._outdoor_sensor_changed,
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [self._outdoor_sensor],
+                    self._outdoor_sensor_changed,
+                )
             )
 
             outdoor_state = self.hass.states.get(self._outdoor_sensor)
@@ -341,10 +358,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         # Door/window sensors
         for door in self._door_sensors:
-            async_track_state_change_event(
-                self.hass,
-                [door],
-                self._door_changed,
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [door],
+                    self._door_changed,
+                )
             )
 
         # Schedule tracker
@@ -376,7 +395,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         await self._evaluate_heating()
 
     async def async_will_remove_from_hass(self):
-        """Entity removal - unregister from boiler manager."""
+        """Entity removal - stop the schedule timer and unregister from boiler manager."""
+        if self._schedule_tracker:
+            self._schedule_tracker()
+            self._schedule_tracker = None
         self._boiler.unregister_zone_entity(self.name)
         _LOGGER.debug("%s [%s] Unregistered from boiler manager", LOG_PREFIX, self.name)
         await super().async_will_remove_from_hass()
@@ -560,12 +582,27 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     # SENSOR FAIL-SAFE (v1.10.1)
     # ==================================================================================
 
+    def _stale_timeout_from(self, hours) -> timedelta:
+        """Silence limit of the zone sensor from the zone setting; an invalid value falls back to the default."""
+        try:
+            value = float(hours)
+            if not MIN_SENSOR_STALE_HOURS <= value <= MAX_SENSOR_STALE_HOURS:
+                raise ValueError("out of range")
+        except (ValueError, TypeError):
+            _LOGGER.warning(
+                "%s [%s] Invalid sensor silence limit %r - using %.1f h",
+                LOG_PREFIX, self.name, hours, DEFAULT_SENSOR_STALE_HOURS
+            )
+            value = DEFAULT_SENSOR_STALE_HOURS
+        return timedelta(hours=value)
+
     def _sensor_problem(self) -> Optional[str]:
         """
         Why the temperature sensor cannot be trusted right now, or None when it is fine.
 
         - "sensor_unavailable": no readable value for longer than SENSOR_UNAVAILABLE_GRACE
-        - "sensor_stale": a numeric sensor has not reported anything for SENSOR_STALE_TIMEOUT
+        - "sensor_stale": a numeric sensor has not reported anything for the zone's silence limit
+          (setting "sensor_stale_hours", default 2 h)
           (a dead battery usually leaves the last value in place instead of going unavailable)
         """
         if not self._sensor_entity_id:
@@ -591,7 +628,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         self._sensor_bad_since = None
         last_seen = max(state.last_updated, getattr(state, "last_reported", state.last_updated))
-        if now - last_seen >= SENSOR_STALE_TIMEOUT:
+        if now - last_seen >= self._sensor_stale_timeout:
             return "sensor_stale"
         return None
 
@@ -1019,6 +1056,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             "base_hysteresis": self._base_hysteresis,
             "preset_temperatures": dict(PRESET_TEMPERATURES),
             "sensor_fault": self._sensor_fault,
+            "sensor_stale_hours": self._sensor_stale_timeout.total_seconds() / 3600,
             "relay_fault": sorted(self._failed_relay_actions),
         }
 

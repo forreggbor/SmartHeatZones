@@ -31,6 +31,7 @@
           "thermostat_type": "Termosztát típusa",
           "temp_offset": "Hőmérséklet eltérés (°C)",
           "sensor_entity_id": "Zóna hőmérő szenzor",
+          "sensor_stale_hours": "Érzékelő csendhatár (óra)",
           "relay_entities": "Zóna relék",
           "door_sensors": "Ajtó / ablak érzékelők"
         },
@@ -40,6 +41,7 @@
           "thermostat_type": "Fali termosztát (pontos mérés) vagy radiátorra szerelt termosztát (magasabb hőmérsékletet mér)",
           "temp_offset": "Hőmérséklet kompenzáció radiátor termosztátokhoz - a célhőmérséklethez hozzáadódik (alapértelmezett: 3°C)",
           "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
+          "sensor_stale_hours": "Biztonság: ha a hőmérő ennyi ideig nem jelentkezik, a zóna fűtése lekapcsol (alapérték: 2 óra). Csak ritkán jelentő érzékelőnél emeld.",
           "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
           "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)"
         }
@@ -89,6 +91,7 @@
           "thermostat_type": "Termosztát típusa",
           "temp_offset": "Hőmérséklet eltérés (°C)",
           "sensor_entity_id": "Zóna hőmérő szenzor",
+          "sensor_stale_hours": "Érzékelő csendhatár (óra)",
           "relay_entities": "Zóna relék",
           "door_sensors": "Ajtó / ablak érzékelők",
           "label_1": "1. időszak neve",
@@ -113,6 +116,7 @@
           "thermostat_type": "Fali termosztát (pontos mérés) vagy radiátorra szerelt termosztát (magasabb hőmérsékletet mér)",
           "temp_offset": "Hőmérséklet kompenzáció radiátor termosztátokhoz - a célhőmérséklethez hozzáadódik (alapértelmezett: 3°C)",
           "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
+          "sensor_stale_hours": "Biztonság: ha a hőmérő ennyi ideig nem jelentkezik, a zóna fűtése lekapcsol (alapérték: 2 óra). Csak ritkán jelentő érzékelőnél emeld.",
           "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
           "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
           "label_1": "Napszak neve (pl. Éjszaka, Reggel, Nappal, Este)",

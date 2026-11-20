@@ -2,6 +2,7 @@
 from datetime import timedelta
 
 from homeassistant.core import HomeAssistant, State
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
@@ -18,6 +19,7 @@ from custom_components.smartheatzones.const import (
     CONF_OVERHEAT_PROTECTION,
     CONF_SCHEDULE,
     CONF_SENSOR,
+    CONF_SENSOR_STALE_HOURS,
     CONF_ZONE_RELAYS,
     DATA_ACTIVE_ZONES,
     DATA_BOILER_MAIN,
@@ -30,7 +32,7 @@ BOILER = "switch.boiler"
 CLIMATE = "climate.living"
 
 
-async def setup_zone(hass: HomeAssistant, temp: str = "19.0", relay: str = "off"):
+async def setup_zone(hass: HomeAssistant, temp: str = "19.0", relay: str = "off", zone_extra: dict | None = None):
     """Create the common settings entry and one zone (target 21 °C, wall thermostat, 0.5 hysteresis)."""
     hass.states.async_set(SENSOR, temp)
     hass.states.async_set(RELAY, relay)
@@ -54,7 +56,7 @@ async def setup_zone(hass: HomeAssistant, temp: str = "19.0", relay: str = "off"
         domain=DOMAIN,
         title="Living",
         version=2,
-        data={CONF_SENSOR: SENSOR, CONF_ZONE_RELAYS: [RELAY], CONF_SCHEDULE: []},
+        data={CONF_SENSOR: SENSOR, CONF_ZONE_RELAYS: [RELAY], CONF_SCHEDULE: [], **(zone_extra or {})},
     )
     zone.add_to_hass(hass)
     assert await hass.config_entries.async_setup(zone.entry_id)
@@ -205,3 +207,84 @@ async def test_removing_a_zone_does_not_touch_a_zone_with_a_similar_name(hass):
     entry = MockConfigEntry(domain=DOMAIN, title="Bath", data={})
     await async_remove_entry(hass, entry)
     assert hass.data[DOMAIN][DATA_ACTIVE_ZONES] == {"Bathroom"}
+
+
+async def test_the_silence_limit_is_a_zone_setting(hass, freezer):
+    """A short limit trips early, a long one does not; both reflect the configured value."""
+    on = async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="19.0", zone_extra={CONF_SENSOR_STALE_HOURS: 0.5})
+    assert hass.states.get(CLIMATE).attributes["sensor_stale_hours"] == 0.5
+
+    await advance(hass, freezer, minutes=29)
+    assert commands(off, RELAY) == []
+    await advance(hass, freezer, minutes=2)
+    assert len(commands(off, RELAY)) == 1
+    assert hass.states.get(CLIMATE).attributes["sensor_fault"] == "sensor_stale"
+
+
+async def test_a_long_silence_limit_keeps_the_zone_running(hass, freezer):
+    on = async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="19.0", zone_extra={CONF_SENSOR_STALE_HOURS: 6.0})
+    await advance(hass, freezer, hours=3)
+    assert commands(off, RELAY) == []
+    assert hass.states.get(CLIMATE).attributes["sensor_fault"] is None
+
+
+async def test_the_silence_limit_defaults_to_two_hours(hass):
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="21.0")
+    assert hass.states.get(CLIMATE).attributes["sensor_stale_hours"] == 2.0
+
+
+async def test_an_invalid_silence_limit_falls_back_to_the_default(hass):
+    """A damaged stored value must not disable the fail-safe."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="21.0", zone_extra={CONF_SENSOR_STALE_HOURS: "abc"})
+    assert hass.states.get(CLIMATE).attributes["sensor_stale_hours"] == 2.0
+
+    await hass.config_entries.async_unload(hass.config_entries.async_entries(DOMAIN)[-1].entry_id)
+    await hass.async_block_till_done()
+    await setup_zone(hass, temp="21.0", zone_extra={CONF_SENSOR_STALE_HOURS: 0})
+    assert hass.states.get(CLIMATE).attributes["sensor_stale_hours"] == 2.0
+
+
+async def test_the_options_form_offers_and_saves_the_silence_limit(hass):
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    zone = await setup_zone(hass, temp="21.0")
+
+    result = await hass.config_entries.options.async_init(zone.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "zone"
+    field = next(k for k in result["data_schema"].schema if str(k) == CONF_SENSOR_STALE_HOURS)
+    assert field.default() == 2.0
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_SENSOR: SENSOR,
+            CONF_ZONE_RELAYS: [RELAY],
+            CONF_SENSOR_STALE_HOURS: 3.5,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert zone.options[CONF_SENSOR_STALE_HOURS] == 3.5
+
+
+async def test_a_reload_leaves_no_old_listeners_behind(hass):
+    """After the options are saved the zone is reloaded; the old entity must not keep reacting."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    zone = await setup_zone(hass, temp="19.0", relay="on")
+
+    assert await hass.config_entries.async_reload(zone.entry_id)
+    await hass.async_block_till_done()
+
+    off = async_mock_service(hass, "switch", "turn_off")
+    hass.states.async_set(SENSOR, "23.0")  # warm enough: exactly one switch-off, not one per old entity
+    await hass.async_block_till_done()
+    assert len(commands(off, RELAY)) == 1

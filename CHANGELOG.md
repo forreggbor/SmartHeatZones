@@ -2,6 +2,33 @@
 
 This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
 
+## Version 1.11.0 (2026-11-20) – Feature Release
+
+| Category | Description |
+|----------|-------------|
+| Added    | The silence limit of the zone sensor is a setting of each zone |
+| Added    | Zones report the silence limit in use as `sensor_stale_hours` |
+| Fixed    | After saving the settings of a zone, the old copy of the zone no longer keeps switching the relays |
+| Changed  | The Lovelace guide recommends the GlowStat dashboard card |
+| Changed  | The README header shows the badges in order and the Marketplace button on its own line |
+
+### Added
+
+- Each zone has a new setting, **Sensor silence limit (hours)**: if the temperature sensor of the zone sends nothing for this long, the heating of the zone is switched off until the sensor reports again. The default is 2 hours for radiators and underfloor heating alike, the range is 0.5 to 24 hours, and a short help text is shown next to the field. Before, the limit was a fixed value of 2 hours in the program code. It matters most for underfloor heating, where a long limit lets the floor keep warming. An invalid stored value falls back to the 2 hour default, so the safety function cannot be switched off by accident (closes #9).
+- The climate entity of every zone reports the limit in use as the attribute `sensor_stale_hours` (closes #9).
+
+### Fixed
+
+- When the settings of a zone were saved, the zone was reloaded, but the old copy kept running in the background: its schedule timer and its listeners for the temperature sensor, the relays, the door sensors and the outdoor sensor were not stopped. After every save one more copy reacted to the same event and sent the same relay command again. The old copy is now stopped completely when a zone is reloaded or removed (closes #10).
+
+### Changed
+
+- The Lovelace guide and the README now recommend our own dashboard card, [GlowStat](https://github.com/forreggbor/ha-GlowStat), with a setup example. The button-card template stays as an alternative (closes #11).
+- The README header shows the version badges in one row, the Marketplace button on its own line below them, and the author, version and minimum Home Assistant version in a single readable line (closes #11).
+
+### No breaking changes
+All existing configurations continue working without modification. Existing zones get the default silence limit of 2 hours, which is the value used since version 1.10.1. The fixed limit in `const.py` is replaced by the zone setting.
+
 ## Version 1.10.1 (2026-11-20) – Safety Fix Release
 
 | Category | Description |

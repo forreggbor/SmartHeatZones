@@ -1,7 +1,10 @@
 """
 SmartHeatZones - Constants
-Version: 1.10.1 (HA 2025.10+ compatible)
+Version: 1.11.0 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.11.0 (FEATURE)
+- Added: per-zone sensor silence limit (CONF_SENSOR_STALE_HOURS, default 2 h); SENSOR_STALE_TIMEOUT removed
 
 CHANGELOG v1.10.1 (SAFETY FIX)
 - Added: sensor fail-safe timeouts (SENSOR_UNAVAILABLE_GRACE, SENSOR_STALE_TIMEOUT, WATCHDOG_INTERVAL)
@@ -62,7 +65,7 @@ from datetime import timedelta
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.10.1"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.11.0"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
@@ -177,9 +180,13 @@ ERR_INVALID_TEMP = "Invalid temperature value received from sensor"
 ERR_OVERHEAT = "Overheat protection triggered"
 
 # Sensor fail-safe (v1.10.1): the heating is switched off when its temperature sensor cannot be trusted.
+# The silence limit of a numeric sensor is a per-zone setting (v1.10.2).
+CONF_SENSOR_STALE_HOURS = "sensor_stale_hours"
+DEFAULT_SENSOR_STALE_HOURS = 2.0
+MIN_SENSOR_STALE_HOURS = 0.5
+MAX_SENSOR_STALE_HOURS = 24.0
 SENSOR_BAD_STATES = ("unavailable", "unknown", "none")
 SENSOR_UNAVAILABLE_GRACE = timedelta(minutes=10)  # tolerated length of "unavailable"/invalid readings
-SENSOR_STALE_TIMEOUT = timedelta(hours=2)  # no report at all from a numeric sensor for this long
 WATCHDOG_INTERVAL = timedelta(minutes=1)  # fail-safe check and retry of failed relay commands
 ERR_OUTDOOR_SENSOR_UNAVAILABLE = "Outdoor temperature sensor unavailable"
 ERR_NO_COMMON_SETTINGS = "Common settings must be configured first"  # NEW v1.6.0

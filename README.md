@@ -1,15 +1,14 @@
-# SmartHeatZones v1.10.1
+# SmartHeatZones v1.11.0
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
 [![GitHub Release](https://img.shields.io/github/v/release/forreggbor/SmartHeatZones?style=flat-square)](https://github.com/forreggbor/SmartHeatZones/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.10%2B-blue?style=flat-square)](https://www.home-assistant.io/)
-[![Open in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=SmartHeatZones&category=integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-**Author:** forreggbor
-**Current Version:** 1.10.1
-**Minimum HA Version:** 2025.10+
+[![Open in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=SmartHeatZones&category=integration)
+
+**Author:** forreggbor · **Current Version:** 1.11.0 · **Minimum HA Version:** 2025.10+
 
 ---
 
@@ -18,6 +17,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Screenshots](#screenshots)
+- [Recommended dashboard card](#recommended-dashboard-card)
 - [Installation](#installation)
 - [Documentation](#documentation)
 - [Support](#support)
@@ -106,6 +106,20 @@ SmartHeatZones provides a **software-based solution** using your existing Home A
 
 ---
 
+## Recommended dashboard card
+
+For the dashboard we recommend **[GlowStat](https://github.com/forreggbor/ha-GlowStat)**, our own card for exactly this kind of zone: a compact climate card per zone and a thermometer card for the zone sensor. It shows the heating state with a glow that pulses while a zone heats, the target temperature with `+` / `-`, and the preset buttons of the zone. The preset temperatures (comfort, eco, away) are read from the zone itself, so they follow the integration. Everything is set up in the dashboard editor, no YAML needed.
+
+[![Open GlowStat in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=ha-GlowStat&category=plugin)
+
+| Climate card for a zone | Thermometer card for the zone sensor |
+|-------------------------|--------------------------------------|
+| ![GlowStat climate card for a heating zone](https://raw.githubusercontent.com/forreggbor/ha-GlowStat/main/docs/images/climate-heating.png) | ![GlowStat thermometer card](https://raw.githubusercontent.com/forreggbor/ha-GlowStat/main/docs/images/thermometer-warm.png) |
+
+See [Lovelace UI](docs/lovelace.md) for the setup and other dashboard options.
+
+---
+
 ## Installation
 
 ### Method 1: Marketplace / HACS (Recommended)
@@ -175,7 +189,7 @@ After restart, verify installation:
 | First setup of the integration and the first zone | [Getting started](docs/getting-started.md) |
 | Common settings, zone options and daily use | [Configuration and usage](docs/configuration.md) |
 | Adaptive hysteresis, piggyback heating, boiler management | [Advanced features](docs/advanced-features.md) |
-| Thermostat card for the dashboard | [Lovelace UI](docs/lovelace.md), [button-card template](docs/lovelace-button-card-template.md) |
+| Recommended dashboard card (GlowStat) and alternatives | [Lovelace UI](docs/lovelace.md), [button-card template](docs/lovelace-button-card-template.md) |
 | How it works inside | [Architecture and technical details](docs/architecture.md) |
 | Something does not work | [Troubleshooting and FAQ](docs/troubleshooting.md) |
 | Contributing, versioning | [Development](docs/development.md) |
