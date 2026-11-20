@@ -1,8 +1,33 @@
-# SmartHeatZones - Version Management Guide
+# Contributing
 
-## 📌 Version Number Locations
+Contributions are welcome! Please:
 
-### ✅ SINGLE SOURCE OF TRUTH
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+**Areas for Contribution:**
+- Additional language translations
+- Bug fixes
+- Documentation improvements
+- Feature enhancements
+- Example configurations
+
+**Coding Standards:**
+- Follow Home Assistant development guidelines
+- Include docstrings for functions
+- Add debug logging for troubleshooting
+- Update version numbers appropriately
+
+---
+
+## Version management
+
+### 📌 Version Number Locations
+
+#### ✅ SINGLE SOURCE OF TRUTH
 
 **const.py (Line 30):**
 ```python
@@ -16,15 +41,15 @@ This constant is:
 
 ---
 
-## 📋 Other Version References (Valid)
+### 📋 Other Version References (Valid)
 
-### 1. manifest.json
+#### 1. manifest.json
 **Purpose:** Home Assistant integration metadata  
 **Location:** Line 4  
 **Current Value:** `"version": "1.6.1"`  
 **Note:** Must match `INTEGRATION_VERSION` in const.py
 
-### 2. ConfigFlow VERSION
+#### 2. ConfigFlow VERSION
 **Purpose:** Configuration schema version (for migrations)  
 **Location:** config_flow.py, Line 50  
 **Current Value:** `VERSION = 2`  
@@ -32,11 +57,11 @@ This constant is:
 
 ---
 
-## 📝 Documentation References (Historical)
+### 📝 Documentation References (Historical)
 
 These are **CORRECT** and should remain:
 
-### File Headers (Changelog References)
+#### File Headers (Changelog References)
 All file headers contain historical version references in comments:
 - `Version: 1.6.1` - Current version in header
 - `NEW in v1.6.1:` - Changes in this version
@@ -60,7 +85,7 @@ CHANGELOG v1.6.0 (MAJOR UPDATE):
 """
 ```
 
-### Code Comments (Feature References)
+#### Code Comments (Feature References)
 Comments referencing when features were added:
 ```python
 # NEW v1.6.0: Underfloor heating uses NO hysteresis
@@ -72,9 +97,9 @@ DATA_COMMON_SETTINGS = "common_settings"  # NEW v1.6.0: Common settings entry
 
 ---
 
-## 🔍 Verification Results
+### 🔍 Verification Results
 
-### ✅ Active Code Check
+#### ✅ Active Code Check
 **Result:** Only ONE version string in active code (excluding comments/docstrings)
 
 ```
@@ -82,7 +107,7 @@ DATA_COMMON_SETTINGS = "common_settings"  # NEW v1.6.0: Common settings entry
   Line 30: INTEGRATION_VERSION = "1.6.1"  # Integration version displayed in UI
 ```
 
-### ✅ All Other References
+#### ✅ All Other References
 All other version numbers are in:
 - ❌ Comments (starts with `#`)
 - ❌ Docstrings (between `"""` or `'''`)
@@ -91,9 +116,9 @@ All other version numbers are in:
 
 ---
 
-## 🚀 How to Update Version
+### 🚀 How to Update Version
 
-### For Regular Updates (1.6.1 → 1.6.2)
+#### For Regular Updates (1.6.1 → 1.6.2)
 
 **Step 1:** Update `const.py`
 ```python
@@ -127,7 +152,7 @@ NEW in v1.6.2:
 
 ---
 
-### For Breaking Changes (1.6.2 → 1.7.0)
+#### For Breaking Changes (1.6.2 → 1.7.0)
 
 Do all steps above, PLUS:
 
@@ -138,7 +163,7 @@ VERSION = 3  # Bumped to v3 for v1.7.0 config changes
 
 ---
 
-## 📊 Version Number Summary
+### 📊 Version Number Summary
 
 | Location | Current Value | Purpose | Must Update? |
 |----------|---------------|---------|--------------|
@@ -150,7 +175,7 @@ VERSION = 3  # Bumped to v3 for v1.7.0 config changes
 
 ---
 
-## 🎯 Benefits of Current System
+### 🎯 Benefits of Current System
 
 ✅ **Single Source for UI:** `INTEGRATION_VERSION` in const.py  
 ✅ **No Hardcoded Versions:** All UI displays use constant  
@@ -160,9 +185,9 @@ VERSION = 3  # Bumped to v3 for v1.7.0 config changes
 
 ---
 
-## 🔍 Validation Commands
+### 🔍 Validation Commands
 
-### Check active code for hardcoded versions:
+#### Check active code for hardcoded versions:
 ```bash
 python3 << 'EOF'
 import re
@@ -171,7 +196,7 @@ import re
 EOF
 ```
 
-### Verify manifest.json matches const.py:
+#### Verify manifest.json matches const.py:
 ```bash
 CONST_VER=$(grep "^INTEGRATION_VERSION" const.py | cut -d'"' -f2)
 MANIFEST_VER=$(grep '"version"' manifest.json | cut -d'"' -f4)
@@ -180,7 +205,7 @@ MANIFEST_VER=$(grep '"version"' manifest.json | cut -d'"' -f4)
 
 ---
 
-## ⚠️ Common Mistakes to Avoid
+### ⚠️ Common Mistakes to Avoid
 
 ❌ **DON'T** change version numbers in code comments like:
 ```python
@@ -202,24 +227,24 @@ MANIFEST_VER=$(grep '"version"' manifest.json | cut -d'"' -f4)
 
 ---
 
-## 📚 Files with Version References
+### 📚 Files with Version References
 
-### Files with Active Version Code:
+#### Files with Active Version Code:
 1. ✅ `const.py` - INTEGRATION_VERSION = "1.6.1" (Line 30)
 
-### Files with Version in Documentation Only:
+#### Files with Version in Documentation Only:
 1. 📝 `__init__.py` - Header changelog
 2. 📝 `config_flow.py` - Header changelog + schema VERSION
 3. 📝 `options_flow.py` - Header changelog + code comments
 4. 📝 `climate.py` - Header changelog + inline comments
 5. 📝 `boiler_manager.py` - Header changelog
 
-### Files with HA Metadata:
+#### Files with HA Metadata:
 1. ⚙️ `manifest.json` - version field
 
 ---
 
-## ✅ Current State Verification
+### ✅ Current State Verification
 
 **Last Checked:** 2025-10-28
 
@@ -236,21 +261,21 @@ MANIFEST_VER=$(grep '"version"' manifest.json | cut -d'"' -f4)
 
 ---
 
-## 🎓 Understanding Version Types
+### 🎓 Understanding Version Types
 
-### Integration Version (1.6.1)
+#### Integration Version (1.6.1)
 - **What:** User-facing release version
 - **Where:** const.py, manifest.json, UI
 - **Changes:** Every release
 - **Format:** MAJOR.MINOR.PATCH (semver)
 
-### Schema Version (2)
+#### Schema Version (2)
 - **What:** Config data structure version
 - **Where:** ConfigFlow.VERSION
 - **Changes:** Only when config format changes
 - **Format:** Integer
 
-### Historical References (v1.6.0, v1.5.1, etc.)
+#### Historical References (v1.6.0, v1.5.1, etc.)
 - **What:** Documentation of when features added
 - **Where:** Comments, docstrings
 - **Changes:** Never (preserved for context)

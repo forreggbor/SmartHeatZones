@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Boiler Manager
-Version: 1.9.1
+Version: 1.10.1
+
+CHANGELOG v1.10.1 (SAFETY FIX)
+- Fixed: a failed boiler command is retried (only while it is still the wanted one)
 
 CHANGELOG v1.9.1 (BUGFIX)
 - Fixed: Removing the outdoor temperature sensor is not removed from settings
@@ -47,6 +50,7 @@ class BoilerManager:
         self._boiler_entity_id: Optional[str] = None
         self._active_zones: set[str] = set()
         self._zone_entities: dict[str, "SmartHeatZoneClimate"] = {}
+        self._failed_action: Optional[str] = None  # boiler command that failed and is retried
         _LOGGER.info("%s BoilerManager initialized", LOG_PREFIX)
 
     # --------------------------------------------------------------------------
@@ -127,11 +131,11 @@ class BoilerManager:
     # Segédfüggvények
     # --------------------------------------------------------------------------
 
-    async def _call_boiler_service(self, action: str):
-        """Service hívás a kazán kapcsolóhoz."""
+    async def _call_boiler_service(self, action: str) -> bool:
+        """Service hívás a kazán kapcsolóhoz. A sikertelen parancsot megjegyzi és újrapróbálja."""
         if not self._boiler_entity_id:
             _LOGGER.warning("%s No boiler entity configured", LOG_PREFIX)
-            return
+            return False
 
         try:
             await self.hass.services.async_call(
@@ -141,8 +145,31 @@ class BoilerManager:
                 blocking=True,
             )
             _LOGGER.info("%s Boiler relay %s → %s", LOG_PREFIX, self._boiler_entity_id, action.upper())
+            self._failed_action = None
+            return True
         except Exception as e:
-            _LOGGER.error("%s Boiler relay control failed: %s", LOG_PREFIX, e)
+            self._failed_action = action
+            _LOGGER.error(
+                "%s Boiler relay command FAILED %s → %s: %s (will retry)",
+                LOG_PREFIX, self._boiler_entity_id, action, e
+            )
+            return False
+
+    async def retry_failed(self):
+        """
+        Retry a failed boiler command, if it is still the wanted one.
+
+        The wanted state follows the active zones, so a newer decision cancels the retry and a
+        manual switch by the user is never overridden.
+        """
+        if not self._failed_action:
+            return
+        wanted = "turn_on" if self._active_zones else "turn_off"
+        if wanted != self._failed_action:
+            self._failed_action = None
+            return
+        _LOGGER.warning("%s Retrying failed boiler command: %s", LOG_PREFIX, self._failed_action)
+        await self._call_boiler_service(self._failed_action)
 
     # --------------------------------------------------------------------------
     # Állapot lekérdezés és debug
@@ -158,6 +185,7 @@ class BoilerManager:
             "boiler_entity": self._boiler_entity_id,
             "active_zones": list(self._active_zones),
             "active_count": len(self._active_zones),
+            "failed_action": self._failed_action,
         }
 
     def __repr__(self):

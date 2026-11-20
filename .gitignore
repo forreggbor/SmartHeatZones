@@ -4,6 +4,9 @@
 /.github/*
 !/.github/workflows/
 !/.github/ISSUE_TEMPLATE/
+!/.github/dependabot.yml
 /docs/lovelace/
 /docs/DEV-ROADMAP.md
 /docs/LOVELACE_DASHBOARD_PROPOSAL.md
+__pycache__/
+.pytest_cache/

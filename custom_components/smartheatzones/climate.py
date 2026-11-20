@@ -1,7 +1,13 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.10.0 (HA 2025.10+ compatible)
+Version: 1.10.1 (HA 2025.10+ compatible)
 Author: forreggbor
+
+CHANGELOG v1.10.1 (SAFETY FIX)
+- Fixed: heating is switched off when the temperature sensor is lost (unavailable 10 min / silent 2 h)
+- Fixed: failed relay commands are retried; a relay left on over a restart is taken over
+- Fixed: invalid stored target temperature or preset no longer stops the zone from loading
+- Added: sensor_fault and relay_fault state attributes
 
 CHANGELOG v1.10.0 (FEATURE)
 - Added: preset_temperatures state attribute (comfort/eco/away targets) for dashboard cards
@@ -57,6 +63,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -95,6 +102,10 @@ from .const import (
     ADAPTIVE_HYSTERESIS_MULTIPLIERS,
     LOG_PREFIX,
     ERR_OVERHEAT,
+    SENSOR_BAD_STATES,
+    SENSOR_UNAVAILABLE_GRACE,
+    SENSOR_STALE_TIMEOUT,
+    WATCHDOG_INTERVAL,
 )
 
 
@@ -237,6 +248,11 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self._outdoor_temp = None
         self._boiler = hass.data[DOMAIN][DATA_BOILER_MAIN]
 
+        # Fail-safe state (v1.10.1)
+        self._sensor_fault: Optional[str] = None  # why the sensor is not trusted, None when fine
+        self._sensor_bad_since: Optional[datetime] = None
+        self._failed_relay_actions: dict[str, str] = {}  # relay entity -> command that failed
+
         _LOGGER.info(
             "%s [%s] Initialized | Mode=%s | Preset=%s | Overheat=%.1f°C",
             LOG_PREFIX, self.name, self._heating_mode, self._preset_mode, self._overheat_temp
@@ -257,16 +273,26 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         last_state = await self.async_get_last_state()
         if last_state:
             if last_state.attributes.get(ATTR_TEMPERATURE):
-                self._target_temp = float(last_state.attributes[ATTR_TEMPERATURE])
-                _LOGGER.info("%s [%s] Restored target: %.1f°C", LOG_PREFIX, self.name, self._target_temp)
+                try:
+                    restored = float(last_state.attributes[ATTR_TEMPERATURE])
+                    self._target_temp = min(max(restored, self._attr_min_temp), self._attr_max_temp)
+                    _LOGGER.info("%s [%s] Restored target: %.1f°C", LOG_PREFIX, self.name, self._target_temp)
+                except (ValueError, TypeError):
+                    _LOGGER.warning(
+                        "%s [%s] Ignoring invalid stored target temperature: %r",
+                        LOG_PREFIX, self.name, last_state.attributes[ATTR_TEMPERATURE]
+                    )
 
             if last_state.state in [HVACMode.HEAT, HVACMode.OFF]:
                 self._hvac_mode = last_state.state
                 _LOGGER.info("%s [%s] Restored HVAC: %s", LOG_PREFIX, self.name, self._hvac_mode)
 
-            if last_state.attributes.get("preset_mode"):
-                self._preset_mode = last_state.attributes["preset_mode"]
+            restored_preset = last_state.attributes.get("preset_mode")
+            if restored_preset in PRESET_MODES:
+                self._preset_mode = restored_preset
                 _LOGGER.info("%s [%s] Restored preset: %s", LOG_PREFIX, self.name, self._preset_mode)
+            elif restored_preset:
+                _LOGGER.warning("%s [%s] Ignoring invalid stored preset: %r", LOG_PREFIX, self.name, restored_preset)
 
         # Temperature sensor tracking
         if self._sensor_entity_id:
@@ -277,7 +303,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             )
 
             sensor_state = self.hass.states.get(self._sensor_entity_id)
-            if sensor_state and sensor_state.state not in ["unavailable", "unknown", "none"]:
+            if sensor_state and sensor_state.state not in SENSOR_BAD_STATES:
                 try:
                     self._current_temp = float(sensor_state.state)
                     _LOGGER.info("%s [%s] Initial temp: %.2f°C", LOG_PREFIX, self.name, self._current_temp)
@@ -329,6 +355,23 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 timedelta(minutes=15)
             )
             _LOGGER.debug("%s [%s] Schedule tracker enabled", LOG_PREFIX, self.name)
+
+        # Take over the real relay state: after a restart a relay may still be on while this entity
+        # starts as "not heating", and it could then never be switched off again.
+        if any((r := self.hass.states.get(rid)) is not None and r.state == "on" for rid in self._relay_entities):
+            _LOGGER.warning(
+                "%s [%s] Relay is already ON at startup - taking over the heating state",
+                LOG_PREFIX, self.name
+            )
+            self._is_heating = True
+            if self._boiler_entity:
+                await self._boiler.turn_on(self._boiler_entity, zone=self.name)
+
+        # Fail-safe watchdog (sensor health and retry of failed relay commands)
+        self._sensor_problem()  # starts the "unavailable" clock if the sensor is not readable now
+        self.async_on_remove(
+            async_track_time_interval(self.hass, self._watchdog, WATCHDOG_INTERVAL)
+        )
 
         await self._evaluate_heating()
 
@@ -455,12 +498,21 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         if not new_state:
             return
 
-        if new_state.state in ["unavailable", "unknown", "none"]:
-            _LOGGER.warning("%s [%s] Sensor unavailable", LOG_PREFIX, self.name)
+        if new_state.state in SENSOR_BAD_STATES:
+            _LOGGER.warning("%s [%s] Sensor unavailable (fail-safe after %s)", LOG_PREFIX, self.name, SENSOR_UNAVAILABLE_GRACE)
+            self._sensor_problem()  # starts the grace period
             return
 
         try:
-            self._current_temp = float(new_state.state)
+            value = float(new_state.state)
+            self._current_temp = value
+            self._sensor_bad_since = None
+            if self._sensor_fault:
+                _LOGGER.warning(
+                    "%s [%s] Sensor recovered (%s) - normal control resumes",
+                    LOG_PREFIX, self.name, self._sensor_fault
+                )
+                self._sensor_fault = None
             _LOGGER.debug("%s [%s] Sensor: %.2f°C", LOG_PREFIX, self.name, self._current_temp)
 
             await self._check_overheat_protection()
@@ -469,6 +521,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         except (ValueError, TypeError):
             _LOGGER.error("%s [%s] Invalid sensor value: %s", LOG_PREFIX, self.name, new_state.state)
+            self._sensor_problem()  # an unreadable value counts like "unavailable"
 
     @callback
     async def _outdoor_sensor_changed(self, event):
@@ -502,6 +555,90 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         elif new_state and new_state.state == "off":
             _LOGGER.info("%s [%s] Door/window closed – re-evaluating", LOG_PREFIX, self.name)
             await self._evaluate_heating()
+
+    # ==================================================================================
+    # SENSOR FAIL-SAFE (v1.10.1)
+    # ==================================================================================
+
+    def _sensor_problem(self) -> Optional[str]:
+        """
+        Why the temperature sensor cannot be trusted right now, or None when it is fine.
+
+        - "sensor_unavailable": no readable value for longer than SENSOR_UNAVAILABLE_GRACE
+        - "sensor_stale": a numeric sensor has not reported anything for SENSOR_STALE_TIMEOUT
+          (a dead battery usually leaves the last value in place instead of going unavailable)
+        """
+        if not self._sensor_entity_id:
+            return None
+
+        now = dt_util.utcnow()
+        state = self.hass.states.get(self._sensor_entity_id)
+
+        readable = False
+        if state is not None and state.state not in SENSOR_BAD_STATES:
+            try:
+                float(state.state)
+                readable = True
+            except (ValueError, TypeError):
+                readable = False
+
+        if not readable:
+            if self._sensor_bad_since is None:
+                self._sensor_bad_since = now
+            if now - self._sensor_bad_since >= SENSOR_UNAVAILABLE_GRACE:
+                return "sensor_unavailable"
+            return None
+
+        self._sensor_bad_since = None
+        last_seen = max(state.last_updated, getattr(state, "last_reported", state.last_updated))
+        if now - last_seen >= SENSOR_STALE_TIMEOUT:
+            return "sensor_stale"
+        return None
+
+    async def _watchdog(self, now=None):
+        """Periodic fail-safe: shut the heating down on a lost sensor, retry failed relay commands."""
+        problem = self._sensor_problem()
+
+        if problem and self._sensor_fault is None:
+            self._sensor_fault = problem
+            self._current_temp = None  # never decide on an old value (also blocks piggyback heating)
+            _LOGGER.error(
+                "%s [%s] FAIL-SAFE: %s - heating switched off until the sensor is back",
+                LOG_PREFIX, self.name, problem
+            )
+            await self._set_heating(False, reason=f"Fail-safe: {problem}")
+            self.async_write_ha_state()
+        elif not problem and self._sensor_fault is not None:
+            state = self.hass.states.get(self._sensor_entity_id)
+            try:
+                self._current_temp = float(state.state)
+            except (AttributeError, ValueError, TypeError):
+                return
+            _LOGGER.warning(
+                "%s [%s] Sensor recovered (%s) - normal control resumes",
+                LOG_PREFIX, self.name, self._sensor_fault
+            )
+            self._sensor_fault = None
+            await self._evaluate_heating()
+            self.async_write_ha_state()
+
+        await self._retry_failed_commands()
+
+    async def _retry_failed_commands(self):
+        """
+        Retry relay and boiler commands that failed earlier.
+
+        Only a command that is still wanted is repeated, so a manual switch by the user is never
+        overridden: a newer decision (or a detected manual override) drops the pending retry.
+        """
+        for relay_id, action in list(self._failed_relay_actions.items()):
+            if (action == "turn_on") != self._is_heating:
+                self._failed_relay_actions.pop(relay_id, None)
+                continue
+            _LOGGER.warning("%s [%s] Retrying failed relay command %s → %s", LOG_PREFIX, self.name, action, relay_id)
+            await self._call_switch_service(action, relay_id)
+
+        await self._boiler.retry_failed()
 
     # ==================================================================================
     # OVERHEAT PROTECTION
@@ -784,8 +921,8 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         )
         self.async_write_ha_state()
 
-    async def _call_switch_service(self, action: str, entity_id: str):
-        """Call switch service."""
+    async def _call_switch_service(self, action: str, entity_id: str) -> bool:
+        """Call switch service. A failed command is remembered and retried by the watchdog."""
         try:
             await self.hass.services.async_call(
                 "switch",
@@ -794,8 +931,15 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 blocking=True,
             )
             _LOGGER.debug("%s [%s] switch.%s → %s", LOG_PREFIX, self.name, action, entity_id)
+            self._failed_relay_actions.pop(entity_id, None)
+            return True
         except Exception as e:
-            _LOGGER.warning("%s [%s] Failed relay control %s: %s", LOG_PREFIX, self.name, entity_id, e)
+            self._failed_relay_actions[entity_id] = action
+            _LOGGER.error(
+                "%s [%s] Relay command FAILED %s → %s: %s (will retry)",
+                LOG_PREFIX, self.name, action, entity_id, e
+            )
+            return False
 
     # ==================================================================================
     # THERMOSTAT INTERFACE (v1.6.0 - Always HEAT mode when adjusting)
@@ -874,6 +1018,8 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             "overheat_protection": self._overheat_temp,
             "base_hysteresis": self._base_hysteresis,
             "preset_temperatures": dict(PRESET_TEMPERATURES),
+            "sensor_fault": self._sensor_fault,
+            "relay_fault": sorted(self._failed_relay_actions),
         }
 
         if self._adaptive_hysteresis_enabled and self._outdoor_temp is not None:

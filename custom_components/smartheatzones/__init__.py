@@ -1,6 +1,9 @@
 """
 SmartHeatZones - Multi-zone heating controller
-Version: 1.9.1
+Version: 1.10.1
+
+CHANGELOG v1.10.1 (BUGFIX)
+- Fixed: removing a zone no longer affects a zone whose name starts the same way
 
 CHANGELOG v1.9.1 (BUGFIX)
 - Fixed: Removing the outdoor temperature sensor is not removed from settings
@@ -205,6 +208,6 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
                 domain_data[DATA_ENTRIES].pop(entry.entry_id, None)
             if DATA_ACTIVE_ZONES in domain_data:
                 zones = domain_data[DATA_ACTIVE_ZONES]
-                domain_data[DATA_ACTIVE_ZONES] = {z for z in zones if not z.startswith(entry.title)}
+                domain_data[DATA_ACTIVE_ZONES] = {z for z in zones if z != entry.title}
     except Exception as e:
         _LOGGER.warning("%s Cleanup warning: %s", LOG_PREFIX, e)

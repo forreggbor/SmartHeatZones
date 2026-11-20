@@ -1,5 +1,45 @@
 # SmartHeatZones Changelog
 
+This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
+
+## Version 1.10.1 (2026-11-20) – Safety Fix Release
+
+| Category | Description |
+|----------|-------------|
+| Security | The heating is switched off when its temperature sensor is lost or has gone silent |
+| Security | A relay or boiler command that fails is retried |
+| Security | A relay that stayed on during a restart can be switched off again |
+| Fixed    | A damaged stored setting no longer stops a zone from loading |
+| Fixed    | Removing a zone no longer affects a zone with a similar name |
+| Added    | Zones report `sensor_fault` and `relay_fault` |
+| Added    | Automated tests for the safety behavior |
+| Changed  | The documentation is reorganized and the README has screenshots |
+| Changed  | The automatic checks are pinned to fixed versions |
+
+### Security
+
+- If the temperature sensor of a zone has no readable value (unavailable, unknown or not a number) for 10 minutes, or a sensor that still shows a number has not reported anything for 2 hours, the zone switches its relays off and releases the boiler. Before, the heating stayed on in this case, for example after a dead battery, and the overheat protection could not act without new readings. The zone cannot start by piggyback heating while the sensor is lost, and it resumes normal control by itself when the sensor is back.
+- When a relay or the boiler switch does not accept a command, the error is logged and the command is repeated every minute for as long as it is still wanted. Before, a failed switch-off was only logged, and the zone believed the relay was off while it stayed on. A newer decision or a manual switch cancels the repetition, so a manual switch is never overridden.
+- After a restart of Home Assistant the zone takes over the real state of its relays. Before, a relay that was on at that moment could never be switched off by the zone, even when the room was already warm.
+
+### Fixed
+
+- A damaged stored target temperature or preset no longer stops a zone from loading, it is ignored instead, and the stored temperature is kept within the allowed range.
+- Removing a zone no longer removes the active state of another zone whose name starts the same way.
+
+### Added
+
+- Every zone reports `sensor_fault` (why the sensor is not trusted, empty when it is fine) and `relay_fault` (relays whose last command failed) as attributes of its climate entity, for automations and dashboards.
+- Automated tests for the safety behavior, run on every change together with the existing checks.
+
+### Changed
+
+- The README is now short and contains screenshots. The technical documentation moved to the `docs/` folder, the changelog is a single file in the root of the repository, and the notes of older releases are in `docs/release-notes/`.
+- The automatic checks use fixed versions of their building blocks, which are updated automatically in small steps.
+
+### No breaking changes
+All existing configurations continue working without modification. The temperature sensor of a zone is now monitored, so a sensor that reports less often than every 2 hours would switch its zone off. The limit can be changed in `const.py`.
+
 ## Version 1.10.0 (2026-11-20) – Feature Release
 
 | Category | Description |
