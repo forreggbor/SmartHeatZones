@@ -57,6 +57,15 @@ Each zone options screen shows:
 
 **Zone-Specific Settings:**
 
+**Limp Mode** (all optional)
+- **Purpose:** What a zone does while neither its sensor nor a backup sensor can be trusted: heat for a few minutes of every period instead of switching off (a dead battery during a week away must not cool the house down)
+- **Radiator: minutes on / period (minutes):** default 10 / 60
+- **Underfloor: minutes on / period (minutes):** default 40 / 180
+- **Outdoor cut-off (°C):** default 15; limp mode does not heat at or above it (summer). Leave empty to disable
+- **Backup outdoor source:** a `weather.*` entity or sensor used when the outdoor sensor is lost; without it the system falls back to a cautious estimate of the last 24 hours
+- `0` minutes on means no heating. The on time is scaled with the outdoor temperature (same bands as adaptive hysteresis)
+- Details: [Limp mode](advanced-features.md#limp-mode)
+
 **Heating Mode** (REQUIRED)
 - **🔥 Radiator:**
   - Uses hysteresis for smooth operation
@@ -78,10 +87,18 @@ Each zone options screen shows:
 - Example: `sensor.living_room_temperature`
 
 **Sensor Silence Limit** (hours, default 2, range 0.5 to 24)
-- Safety setting of the zone: if the zone temperature sensor sends nothing for this long, the heating of this zone is switched off until the sensor reports again
+- Safety setting of the zone: if the zone temperature sensor sends nothing for this long, the zone switches to its backup sensor or to limp mode until the sensor reports again
 - The same default (2 hours) applies to radiators and underfloor heating. Keep it short for underfloor heating, because the floor keeps warming for as long as the heating stays on
 - Raise it only for a sensor that reports rarely. A Zigbee sensor usually reports at least every one or two hours, check its real reporting interval before you raise the limit
 - Details: [Fail-safe and error handling](advanced-features.md#fail-safe-and-error-handling)
+
+**Backup Temperature Sensor** (optional) and **Backup Sensor Correction** (°C, default 0)
+- Used only while the zone sensor is lost; control continues normally on its reading plus the correction
+- Use a negative correction for a sensor that reads too high (for example one mounted on a radiator)
+- If the backup sensor is lost too, the zone goes to limp mode
+
+**Limp Mode Override** (optional: minutes on and period, both or neither)
+- Replaces the common limp profile for this zone only
 
 **Zone Relays** (REQUIRED, Multiple Allowed)
 - Select one or more switches that control this zone

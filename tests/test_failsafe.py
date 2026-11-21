@@ -16,6 +16,8 @@ from custom_components.smartheatzones.const import (
     CONF_BOILER_MAIN,
     CONF_HYSTERESIS,
     CONF_IS_COMMON_SETTINGS,
+    CONF_LIMP_ON,
+    CONF_LIMP_PERIOD,
     CONF_OVERHEAT_PROTECTION,
     CONF_SCHEDULE,
     CONF_SENSOR,
@@ -31,8 +33,17 @@ RELAY = "switch.living_relay"
 BOILER = "switch.boiler"
 CLIMATE = "climate.living"
 
+# Limp mode heats in a clock-dependent cycle; tests about "a lost sensor means off" use a zero duty
+LIMP_OFF = {CONF_LIMP_ON: 0, CONF_LIMP_PERIOD: 60}
 
-async def setup_zone(hass: HomeAssistant, temp: str = "19.0", relay: str = "off", zone_extra: dict | None = None):
+
+async def setup_zone(
+    hass: HomeAssistant,
+    temp: str = "19.0",
+    relay: str = "off",
+    zone_extra: dict | None = None,
+    common_extra: dict | None = None,
+):
     """Create the common settings entry and one zone (target 21 °C, wall thermostat, 0.5 hysteresis)."""
     hass.states.async_set(SENSOR, temp)
     hass.states.async_set(RELAY, relay)
@@ -47,6 +58,7 @@ async def setup_zone(hass: HomeAssistant, temp: str = "19.0", relay: str = "off"
             CONF_BOILER_MAIN: BOILER,
             CONF_HYSTERESIS: 0.5,
             CONF_OVERHEAT_PROTECTION: 26.0,
+            **(common_extra or {}),
         },
     )
     common.add_to_hass(hass)
@@ -92,7 +104,7 @@ async def test_normal_control_still_works(hass, freezer):
 async def test_unavailable_sensor_switches_heating_off_after_the_grace_period(hass, freezer):
     on = async_mock_service(hass, "switch", "turn_on")
     off = async_mock_service(hass, "switch", "turn_off")
-    await setup_zone(hass, temp="19.0")
+    await setup_zone(hass, temp="19.0", zone_extra=LIMP_OFF)
     assert len(commands(on, RELAY)) == 1
 
     hass.states.async_set(SENSOR, "unavailable")
@@ -112,7 +124,7 @@ async def test_silent_sensor_switches_heating_off(hass, freezer):
     """A dead battery leaves the last value in place; no report for 2 hours is a fault."""
     on = async_mock_service(hass, "switch", "turn_on")
     off = async_mock_service(hass, "switch", "turn_off")
-    await setup_zone(hass, temp="19.0")
+    await setup_zone(hass, temp="19.0", zone_extra=LIMP_OFF)
 
     await advance(hass, freezer, hours=1, minutes=59)
     assert commands(off, RELAY) == []
@@ -125,7 +137,7 @@ async def test_silent_sensor_switches_heating_off(hass, freezer):
 async def test_sensor_recovery_resumes_control(hass, freezer):
     on = async_mock_service(hass, "switch", "turn_on")
     off = async_mock_service(hass, "switch", "turn_off")
-    await setup_zone(hass, temp="19.0")
+    await setup_zone(hass, temp="19.0", zone_extra=LIMP_OFF)
     hass.states.async_set(SENSOR, "unavailable")
     await hass.async_block_till_done()
     await advance(hass, freezer, minutes=11)
@@ -213,7 +225,7 @@ async def test_the_silence_limit_is_a_zone_setting(hass, freezer):
     """A short limit trips early, a long one does not; both reflect the configured value."""
     on = async_mock_service(hass, "switch", "turn_on")
     off = async_mock_service(hass, "switch", "turn_off")
-    await setup_zone(hass, temp="19.0", zone_extra={CONF_SENSOR_STALE_HOURS: 0.5})
+    await setup_zone(hass, temp="19.0", zone_extra={CONF_SENSOR_STALE_HOURS: 0.5, **LIMP_OFF})
     assert hass.states.get(CLIMATE).attributes["sensor_stale_hours"] == 0.5
 
     await advance(hass, freezer, minutes=29)

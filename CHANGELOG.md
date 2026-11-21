@@ -2,6 +2,49 @@
 
 This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
 
+## Version 1.12.0 (2026-11-21) – Feature Release
+
+| Category | Description |
+|----------|-------------|
+| Added    | A zone can use a backup temperature sensor when its own sensor is lost |
+| Added    | Limp mode keeps heating in short cycles when no temperature sensor works, so the house does not cool down |
+| Added    | Limp mode scales with the outdoor temperature and stops in warm weather |
+| Added    | The outdoor temperature can come from a backup weather entity or a cautious estimate of the last 24 hours |
+| Added    | The limp cycle is set per heating mode in the common settings and can be overridden for each zone |
+| Added    | A notification and an event report lost sensors and unreachable relays, and point at a likely network problem |
+| Added    | Zones report the sensor in use, limp mode and unreachable relays as attributes |
+| Changed  | A lost zone sensor no longer switches the heating off |
+| Changed  | A change of the common settings takes effect right away, without a restart |
+| Fixed    | A relay that drops off the network is no longer mistaken for a manual switch-off |
+| Fixed    | A relay that comes back after an outage is sent the heating state the zone wants |
+| Fixed    | After a failed relay command is retried successfully, the zone shows it at once |
+| Fixed    | A reloaded zone no longer stays registered at the boiler when it is not heating |
+
+### Added
+
+- **Backup temperature sensor.** Each zone can have a second temperature sensor, with a correction in °C for sensors that read too high or too low (for example one mounted on a radiator). While the zone's own sensor is lost, the zone keeps heating normally on the backup sensor, and it returns to its own sensor as soon as that reports again (closes #21).
+- **Limp mode.** When neither the zone sensor nor a backup works, the zone no longer switches the heating off. It heats for a few minutes of every period instead: 10 minutes of every 60 for radiators and 40 minutes of every 180 for underfloor heating. The cycle follows the clock, so it carries on across restarts, and zones with the same cycle start the boiler together. A door or window left open and the HVAC off setting still stop the heating (closes #21).
+- **Limp mode settings.** The cycle of each heating mode is set in the common settings, and each zone can override it. Setting 0 minutes means no heating, as before (closes #21).
+- **Outdoor temperature in limp mode.** The heating time grows in cold weather with the same steps as the adaptive hysteresis, and the cycle stops when the outdoor temperature reaches the outdoor limit (15 °C by default, can be switched off), so a dead sensor does not heat the house in summer (closes #21).
+- **Backup outdoor source.** If the outdoor sensor is lost, limp mode can use a weather entity or another sensor, also when the internet or the Zigbee network is down. Without any outdoor value, the system uses a cautious estimate: the coldest value of the last 24 hours before the sensor was lost (closes #21).
+- **Notifications and events.** When a zone changes to its backup sensor or to limp mode, and when it recovers, it shows a notification in Home Assistant in your language (Hungarian or English) and fires the `smartheatzones_failsafe` event for your own automations, for example a phone message while you are away. If several sensors of the same integration are lost at once, the message names it as a likely network or coordinator problem. A relay that stays unreachable for 15 minutes while heat is wanted raises its own notification (closes #21).
+- New attributes of each zone: `sensor_source`, `limp_active`, `limp_on_minutes`, `limp_period_minutes`, `outdoor_source` and `relay_unavailable` (closes #21).
+
+### Changed
+
+- A lost zone sensor no longer switches the heating off. The zone changes to its backup sensor or to limp mode; the attribute `sensor_fault` is now also set while the zone runs normally on a backup sensor (closes #21).
+- Changing the common settings now reloads all zones, so the new values apply without restarting Home Assistant. Only a changed boiler switch still needs a restart, and a warning is logged for it (closes #21).
+- The silence limit text in the zone settings now describes the new behavior.
+
+### Fixed
+
+- When a relay lost its network connection, the zone took it for a manual switch-off, released the boiler and, when the relay came back, adopted its old state. A relay that is not reachable is now ignored, and when it returns the zone sends it the state it wants (closes #22).
+- After a failed relay command was retried successfully, the attribute `relay_fault` stayed filled until the next update. It is cleared at once (closes #21).
+- A zone that was reloaded while not heating could stay registered at the boiler and keep it switched on. It now lets go at startup (closes #22).
+
+### Behavior change
+Automations that treated `sensor_fault` as "the heating is off" should use the attributes `sensor_source` and `limp_active` or the `smartheatzones_failsafe` event instead. Existing zones start with the default limp cycle (10 of 60 minutes for radiators, 40 of 180 minutes for underfloor heating); set the minutes to 0 in the common settings to keep the old switch-off behavior.
+
 ## Version 1.11.0 (2026-11-20) – Feature Release
 
 | Category | Description |

@@ -1,8 +1,10 @@
 """
 SmartHeatZones - Constants
-Version: 1.11.0 (HA 2025.10+ compatible)
+Version: 1.12.0 (HA 2025.10+ compatible)
 Author: forreggbor
 
+CHANGELOG v1.12.0 (FEATURE)
+- Added: limp mode, backup sensor and outdoor source settings, outdoor estimate constants, fail-safe event name
 CHANGELOG v1.11.0 (FEATURE)
 - Added: per-zone sensor silence limit (CONF_SENSOR_STALE_HOURS, default 2 h); SENSOR_STALE_TIMEOUT removed
 
@@ -65,7 +67,7 @@ from datetime import timedelta
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.11.0"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.12.0"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
@@ -179,15 +181,55 @@ ERR_BOILER_MISSING = "Boiler switch entity not defined or unavailable"
 ERR_INVALID_TEMP = "Invalid temperature value received from sensor"
 ERR_OVERHEAT = "Overheat protection triggered"
 
-# Sensor fail-safe (v1.10.1): the heating is switched off when its temperature sensor cannot be trusted.
+# Sensor fail-safe (v1.10.1): a temperature sensor that cannot be trusted is replaced by the backup sensor
+# or, without one, by the limp mode (it switched the heating off before v1.12.0).
 # The silence limit of a numeric sensor is a per-zone setting (v1.10.2).
 CONF_SENSOR_STALE_HOURS = "sensor_stale_hours"
 DEFAULT_SENSOR_STALE_HOURS = 2.0
 MIN_SENSOR_STALE_HOURS = 0.5
 MAX_SENSOR_STALE_HOURS = 24.0
 SENSOR_BAD_STATES = ("unavailable", "unknown", "none")
+SENSOR_SOURCE_PRIMARY = "primary"  # the zone runs on its own sensor
+SENSOR_SOURCE_BACKUP = "backup"  # the zone runs on its backup sensor
+SENSOR_SOURCE_NONE = "none"  # no usable sensor
 SENSOR_UNAVAILABLE_GRACE = timedelta(minutes=10)  # tolerated length of "unavailable"/invalid readings
+EVENT_FAILSAFE = "smartheatzones_failsafe"  # fired on every fail-safe state change of a zone
+RELAY_UNAVAILABLE_NOTICE_AFTER = timedelta(minutes=15)  # unreachable relay while heating is wanted -> notify
 WATCHDOG_INTERVAL = timedelta(minutes=1)  # fail-safe check and retry of failed relay commands
 ERR_OUTDOOR_SENSOR_UNAVAILABLE = "Outdoor temperature sensor unavailable"
+
+# Limp mode: open-loop heating cycle while no temperature sensor can be trusted.
+# Common settings: one (on minutes, period minutes) profile per heating mode, the outdoor cut-off and a
+# backup outdoor source. Zone settings: backup sensor (+ correction) and an optional profile override.
+CONF_LIMP_RADIATOR_ON = "limp_radiator_on_min"
+CONF_LIMP_RADIATOR_PERIOD = "limp_radiator_period_min"
+CONF_LIMP_UNDERFLOOR_ON = "limp_underfloor_on_min"
+CONF_LIMP_UNDERFLOOR_PERIOD = "limp_underfloor_period_min"
+CONF_LIMP_OUTDOOR_CUTOFF = "limp_outdoor_cutoff"  # stored as None = cut-off disabled
+CONF_OUTDOOR_BACKUP_SENSOR = "outdoor_backup_sensor"
+CONF_BACKUP_SENSOR = "backup_sensor"
+CONF_BACKUP_SENSOR_OFFSET = "backup_sensor_offset"
+CONF_LIMP_ON = "limp_on_min"
+CONF_LIMP_PERIOD = "limp_period_min"
+DEFAULT_LIMP_RADIATOR_ON = 10
+DEFAULT_LIMP_RADIATOR_PERIOD = 60
+DEFAULT_LIMP_UNDERFLOOR_ON = 40
+DEFAULT_LIMP_UNDERFLOOR_PERIOD = 180
+DEFAULT_LIMP_OUTDOOR_CUTOFF = 15.0
+DEFAULT_BACKUP_SENSOR_OFFSET = 0.0
+MIN_LIMP_PERIOD = 10
+MAX_LIMP_PERIOD = 720
+
+# Outdoor temperature for the limp mode: live sensor -> backup source -> cautious estimate -> none
+LIMP_OUTDOOR_MAX_AGE = timedelta(hours=3)  # a live/backup outdoor value older than this is not trusted
+OUTDOOR_WINDOW = timedelta(hours=24)  # estimate = minimum of the 24 h ending at the last valid sample
+OUTDOOR_SAMPLE_BUCKET = timedelta(minutes=5)  # readings closer than this are merged (keeping the minimum)
+OUTDOOR_ESTIMATE_MIN_SAMPLES = 3
+OUTDOOR_ESTIMATE_MIN_SPAN = timedelta(hours=12)  # samples must cover at least this much of the window
+OUTDOOR_ESTIMATE_MAX_AGE = timedelta(days=7)  # the estimate expires this long after the last sample
+OUTDOOR_SOURCE_LIVE = "live"
+OUTDOOR_SOURCE_BACKUP = "backup"
+OUTDOOR_SOURCE_ESTIMATE = "estimate"
+OUTDOOR_SOURCE_NONE = "none"
 ERR_NO_COMMON_SETTINGS = "Common settings must be configured first"  # NEW v1.6.0
 ERR_CANNOT_DELETE_COMMON = "Cannot delete common settings while zones exist"  # NEW v1.6.0

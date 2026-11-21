@@ -1,7 +1,9 @@
 """
 SmartHeatZones - Multi-zone heating controller
-Version: 1.10.1
+Version: 1.12.0
 
+CHANGELOG v1.12.0 (FEATURE)
+- Added: a change of the common settings reloads all loaded zones one by one (a failing zone does not stop the others)
 CHANGELOG v1.10.1 (BUGFIX)
 - Fixed: removing a zone no longer affects a zone whose name starts the same way
 
@@ -43,7 +45,7 @@ NEW in v1.6.0:
 
 import logging
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import (
@@ -107,7 +109,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER.info("%s Common settings registered", LOG_PREFIX)
         
         # Common settings don't create climate entities, just store config
-        # No platform setup needed
+        # No platform setup needed. A change is applied by reloading the zones (never this entry).
+        entry.async_on_unload(entry.add_update_listener(async_reload_zones))
         return True
 
     # Zone entry - validate common settings exist
@@ -143,6 +146,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _LOGGER.debug("%s Update listener registered for %s", LOG_PREFIX, entry.title)
 
     return True
+
+
+async def async_reload_zones(hass: HomeAssistant, entry: ConfigEntry):
+    """
+    Apply changed common settings: reload every loaded zone, one at a time.
+
+    The common entry itself is never reloaded (unloading it removes the settings the zones read at
+    setup). A zone that fails to reload is logged and does not stop the others. Note: the boiler
+    switch is registered once per Home Assistant run, a changed boiler needs a restart.
+    """
+    zones = [
+        zone for zone in hass.config_entries.async_entries(DOMAIN)
+        if not zone.data.get(CONF_IS_COMMON_SETTINGS) and zone.state is ConfigEntryState.LOADED
+    ]
+    reloaded = 0
+    for zone in zones:
+        try:
+            await hass.config_entries.async_reload(zone.entry_id)
+            reloaded += 1
+        except Exception:
+            _LOGGER.exception("%s Reloading zone '%s' after a common settings change FAILED", LOG_PREFIX, zone.title)
+    _LOGGER.info(
+        "%s Common settings changed - reloaded %d of %d zones", LOG_PREFIX, reloaded, len(zones)
+    )
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):

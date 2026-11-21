@@ -1,7 +1,9 @@
 """
 SmartHeatZones - Boiler Manager
-Version: 1.10.1
+Version: 1.12.0
 
+CHANGELOG v1.12.0 (FEATURE)
+- Added: warning when a zone uses a different boiler switch than the registered one; zone entity snapshot for diagnostics
 CHANGELOG v1.10.1 (SAFETY FIX)
 - Fixed: a failed boiler command is retried (only while it is still the wanted one)
 
@@ -51,6 +53,7 @@ class BoilerManager:
         self._active_zones: set[str] = set()
         self._zone_entities: dict[str, "SmartHeatZoneClimate"] = {}
         self._failed_action: Optional[str] = None  # boiler command that failed and is retried
+        self._mismatch_warned = False  # a differing boiler entity was already reported
         _LOGGER.info("%s BoilerManager initialized", LOG_PREFIX)
 
     # --------------------------------------------------------------------------
@@ -61,6 +64,10 @@ class BoilerManager:
         """Register a zone climate entity for piggyback heating."""
         self._zone_entities[zone_name] = entity
         _LOGGER.debug("%s Zone entity registered: %s", LOG_PREFIX, zone_name)
+
+    def get_zone_entities(self) -> list["SmartHeatZoneClimate"]:
+        """All registered zone entities (a snapshot, safe to iterate across awaits)."""
+        return list(self._zone_entities.values())
 
     def unregister_zone_entity(self, zone_name: str):
         """Unregister a zone climate entity."""
@@ -84,6 +91,12 @@ class BoilerManager:
         """Kazán bekapcsolása zónából."""
         if entity_id and self._boiler_entity_id is None:
             await self.register_boiler(entity_id)
+        elif entity_id and entity_id != self._boiler_entity_id and not self._mismatch_warned:
+            self._mismatch_warned = True
+            _LOGGER.warning(
+                "%s Zone '%s' uses boiler %s but %s is registered - a changed boiler switch needs a Home Assistant restart",
+                LOG_PREFIX, zone, entity_id, self._boiler_entity_id
+            )
 
         was_off = len(self._active_zones) == 0
         self._active_zones.add(zone)

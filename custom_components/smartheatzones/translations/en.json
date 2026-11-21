@@ -11,7 +11,13 @@
           "hysteresis": "Base hysteresis (°C)",
           "overheat_temp": "Overheat protection (°C)",
           "adaptive_hysteresis_enabled": "Adaptive hysteresis",
-          "tempering_heating_enabled": "Tempering heating"
+          "tempering_heating_enabled": "Tempering heating",
+          "limp_radiator_on_min": "Limp mode – radiator: minutes on",
+          "limp_radiator_period_min": "Limp mode – radiator: period (minutes)",
+          "limp_underfloor_on_min": "Limp mode – underfloor: minutes on",
+          "limp_underfloor_period_min": "Limp mode – underfloor: period (minutes)",
+          "limp_outdoor_cutoff": "Limp mode – outdoor cut-off (°C)",
+          "outdoor_backup_sensor": "Backup outdoor source (optional)"
         },
         "data_description": {
           "boiler_main": "Shared main boiler switch (same for all zones)",
@@ -19,7 +25,13 @@
           "hysteresis": "Base switching hysteresis - prevents frequent cycling (radiators only)",
           "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately (safety)",
           "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)",
-          "tempering_heating_enabled": "Coordinated heating: when any zone heats, all zones below target also heat up (fewer on/off cycles)"
+          "tempering_heating_enabled": "Coordinated heating: when any zone heats, all zones below target also heat up (fewer on/off cycles)",
+          "limp_radiator_on_min": "When a zone's sensor cannot be trusted and there is no backup, a radiator zone heats this many minutes per period (0 = no heating).",
+          "limp_radiator_period_min": "Length of the cycle in minutes (10–720).",
+          "limp_underfloor_on_min": "When a zone's sensor cannot be trusted and there is no backup, an underfloor zone heats this many minutes per period (0 = no heating).",
+          "limp_underfloor_period_min": "Length of the cycle in minutes (10–720).",
+          "limp_outdoor_cutoff": "When the outdoor temperature (or its estimate) reaches this value, limp mode does not heat (summer protection). Leave empty to disable.",
+          "outdoor_backup_sensor": "Weather entity (weather.*) or sensor that limp mode uses when the outdoor sensor is gone."
         }
       },
       "zone": {
@@ -33,7 +45,11 @@
           "sensor_entity_id": "Zone temperature sensor",
           "sensor_stale_hours": "Sensor silence limit (hours)",
           "relay_entities": "Zone relays",
-          "door_sensors": "Door / window sensors"
+          "door_sensors": "Door / window sensors",
+          "backup_sensor": "Backup temperature sensor (optional)",
+          "backup_sensor_offset": "Backup sensor correction (°C)",
+          "limp_on_min": "Limp mode override: minutes on",
+          "limp_period_min": "Limp mode override: period (minutes)"
         },
         "data_description": {
           "title": "Unique name for the heating zone (e.g. Ground Floor, Upstairs)",
@@ -41,9 +57,13 @@
           "thermostat_type": "Wall thermostat (accurate measurement) or radiator thermostat (measures higher temperature)",
           "temp_offset": "Temperature compensation for radiator thermostats - added to target temperature (default: 3°C)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
-          "sensor_stale_hours": "Safety: heating in this zone is switched off if the temperature sensor sends nothing for this long (default: 2 h). Raise it only for sensors that report rarely.",
+          "sensor_stale_hours": "Safety: if the temperature sensor sends nothing for this long, the zone switches to the backup sensor or to limp mode (default: 2 h). Raise it only for sensors that report rarely.",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
-          "door_sensors": "Door/window sensors - pause heating when open (optional)"
+          "door_sensors": "Door/window sensors - pause heating when open (optional)",
+          "backup_sensor": "If the zone sensor is lost, the zone switches to this one. If it is lost too, limp mode starts.",
+          "backup_sensor_offset": "Added to the backup sensor reading (for example a negative value for a radiator-mounted sensor).",
+          "limp_on_min": "Leave empty to use the common setting. Fill in both override fields together.",
+          "limp_period_min": "Leave empty to use the common setting. Fill in both override fields together."
         }
       }
     },
@@ -53,7 +73,10 @@
       "boiler_required": "Main boiler switch is required!",
       "title_required": "Zone name is required!",
       "sensor_required": "Temperature sensor is required!",
-      "relay_required": "At least one zone relay is required!"
+      "relay_required": "At least one zone relay is required!",
+      "limp_period_range": "The period must be a whole number between 10 and 720 minutes.",
+      "limp_on_exceeds_period": "The on time cannot be longer than the period.",
+      "limp_pair_required": "Fill in both override fields, or leave both empty."
     },
     "abort": {
       "single_instance_allowed": "This integration is already configured."
@@ -70,7 +93,13 @@
           "hysteresis": "Base hysteresis (°C)",
           "overheat_temp": "Overheat protection (°C)",
           "adaptive_hysteresis_enabled": "Adaptive hysteresis",
-          "tempering_heating_enabled": "Tempering heating"
+          "tempering_heating_enabled": "Tempering heating",
+          "limp_radiator_on_min": "Limp mode – radiator: minutes on",
+          "limp_radiator_period_min": "Limp mode – radiator: period (minutes)",
+          "limp_underfloor_on_min": "Limp mode – underfloor: minutes on",
+          "limp_underfloor_period_min": "Limp mode – underfloor: period (minutes)",
+          "limp_outdoor_cutoff": "Limp mode – outdoor cut-off (°C)",
+          "outdoor_backup_sensor": "Backup outdoor source (optional)"
         },
         "data_description": {
           "boiler_main": "Shared main boiler switch (same for all zones)",
@@ -78,7 +107,13 @@
           "hysteresis": "Base switching hysteresis - radiators only (underfloor has no hysteresis)",
           "overheat_temp": "If zone temperature reaches this value, heating shuts down immediately (safety)",
           "adaptive_hysteresis_enabled": "If enabled, hysteresis automatically increases in colder weather (more stable heating)",
-          "tempering_heating_enabled": "Coordinated heating: when any zone heats, all zones below target also heat up (fewer on/off cycles)"
+          "tempering_heating_enabled": "Coordinated heating: when any zone heats, all zones below target also heat up (fewer on/off cycles)",
+          "limp_radiator_on_min": "When a zone's sensor cannot be trusted and there is no backup, a radiator zone heats this many minutes per period (0 = no heating).",
+          "limp_radiator_period_min": "Length of the cycle in minutes (10–720).",
+          "limp_underfloor_on_min": "When a zone's sensor cannot be trusted and there is no backup, an underfloor zone heats this many minutes per period (0 = no heating).",
+          "limp_underfloor_period_min": "Length of the cycle in minutes (10–720).",
+          "limp_outdoor_cutoff": "When the outdoor temperature (or its estimate) reaches this value, limp mode does not heat (summer protection). Leave empty to disable.",
+          "outdoor_backup_sensor": "Weather entity (weather.*) or sensor that limp mode uses when the outdoor sensor is gone."
         }
       },
       "zone": {
@@ -107,22 +142,35 @@
           "label_4": "Period 4 name",
           "start_4": "Period 4 start",
           "end_4": "Period 4 end",
-          "temp_4": "Period 4 temperature"
+          "temp_4": "Period 4 temperature",
+          "backup_sensor": "Backup temperature sensor (optional)",
+          "backup_sensor_offset": "Backup sensor correction (°C)",
+          "limp_on_min": "Limp mode override: minutes on",
+          "limp_period_min": "Limp mode override: period (minutes)"
         },
         "data_description": {
           "heating_mode": "Select heating mode based on your zone type",
           "thermostat_type": "Wall thermostat (accurate measurement) or radiator thermostat (measures higher temperature)",
           "temp_offset": "Temperature compensation for radiator thermostats - added to target temperature (default: 3°C)",
           "sensor_entity_id": "Temperature sensor entity for this zone",
-          "sensor_stale_hours": "Safety: heating in this zone is switched off if the temperature sensor sends nothing for this long (default: 2 h). Raise it only for sensors that report rarely.",
+          "sensor_stale_hours": "Safety: if the temperature sensor sends nothing for this long, the zone switches to the backup sensor or to limp mode (default: 2 h). Raise it only for sensors that report rarely.",
           "relay_entities": "Zone pump/valve relay switches (multiple allowed)",
           "door_sensors": "Door/window sensors - pause heating when open (optional)",
           "label_1": "Period name (e.g. Night, Morning, Day, Evening)",
           "start_1": "Period start time (hour:minute)",
           "end_1": "Period end time (hour:minute)",
-          "temp_1": "Target temperature during this period"
+          "temp_1": "Target temperature during this period",
+          "backup_sensor": "If the zone sensor is lost, the zone switches to this one. If it is lost too, limp mode starts.",
+          "backup_sensor_offset": "Added to the backup sensor reading (for example a negative value for a radiator-mounted sensor).",
+          "limp_on_min": "Leave empty to use the common setting. Fill in both override fields together.",
+          "limp_period_min": "Leave empty to use the common setting. Fill in both override fields together."
         }
       }
+    },
+    "error": {
+      "limp_period_range": "The period must be a whole number between 10 and 720 minutes.",
+      "limp_on_exceeds_period": "The on time cannot be longer than the period.",
+      "limp_pair_required": "Fill in both override fields, or leave both empty."
     }
   },
   "selector": {
@@ -185,6 +233,26 @@
           "description": "Select desired preset mode"
         }
       }
+    }
+  },
+  "exceptions": {
+    "failsafe_title": {
+      "message": "SmartHeatZones – {zone}"
+    },
+    "failsafe_sensor_backup": {
+      "message": "The temperature sensor of zone {zone} is lost ({cause}). The zone switched to the backup sensor ({backup}), control continues normally.{diagnosis}"
+    },
+    "failsafe_sensor_limp": {
+      "message": "No usable temperature sensor in zone {zone} ({cause}). Limp mode: heating {on} minutes every {period} minutes.{diagnosis}"
+    },
+    "failsafe_relay": {
+      "message": "The relay(s) of zone {zone} have been unreachable for {minutes} minutes: {relays}. The heating cannot be controlled until they are back."
+    },
+    "failsafe_diagnosis_group": {
+      "message": " {platform}: {bad}/{total} sensors silent."
+    },
+    "failsafe_diagnosis_network": {
+      "message": " Several sensors of the same integration are lost, probably a network or coordinator problem."
     }
   }
 }

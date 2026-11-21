@@ -1,7 +1,9 @@
 """
 SmartHeatZones - Config Flow
-Version: 1.11.0
+Version: 1.12.0
 
+CHANGELOG v1.12.0 (FEATURE)
+- Added: limp mode, backup outdoor source, backup sensor fields with validation
 CHANGELOG v1.11.0 (FEATURE)
 - Added: sensor silence limit field in the zone form
 
@@ -31,6 +33,16 @@ from homeassistant import config_entries
 from homeassistant.helpers import selector
 from homeassistant.core import callback
 
+from .limp import (
+    COMMON_NULL_KEYS,
+    COMMON_OPTIONAL_KEYS,
+    ZONE_OPTIONAL_KEYS,
+    apply_optional_fields,
+    common_limp_schema,
+    validate_common_limp,
+    validate_zone_limp,
+    zone_limp_schema,
+)
 from .const import (
     DOMAIN,
     CONF_TITLE,
@@ -107,6 +119,7 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             # Validate required fields
             if not user_input.get(CONF_BOILER_MAIN):
                 errors["boiler_main"] = "boiler_required"
+            errors.update(validate_common_limp(user_input))
             
             if not errors:
                 # --- FIX: Handle outdoor sensor removal correctly ---
@@ -122,6 +135,8 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 if CONF_OUTDOOR_SENSOR not in user_input:
                     _LOGGER.info("%s No outdoor sensor configured, disabling adaptive hysteresis", LOG_PREFIX)
                     user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+
+                apply_optional_fields(user_input, user_input, COMMON_OPTIONAL_KEYS, COMMON_NULL_KEYS)
 
                 # Mark as common settings
                 user_input[CONF_IS_COMMON_SETTINGS] = True
@@ -166,7 +181,7 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     default=DEFAULT_ADAPTIVE_HYSTERESIS
                 ): selector.BooleanSelector(),
             }
-        )
+        ).extend(common_limp_schema({}))
 
         return self.async_show_form(
             step_id="common_settings",
@@ -191,9 +206,11 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["sensor_entity_id"] = "sensor_required"
             if not user_input.get(CONF_ZONE_RELAYS):
                 errors["relay_entities"] = "relay_required"
+            errors.update(validate_zone_limp(user_input))
 
             if not errors:
                 title = user_input[CONF_TITLE]
+                apply_optional_fields(user_input, user_input, ZONE_OPTIONAL_KEYS)
                 _LOGGER.info("%s Creating zone: %s", LOG_PREFIX, title)
                 return self.async_create_entry(title=title, data=user_input)
 
@@ -249,7 +266,7 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
                 ),
             }
-        )
+        ).extend(zone_limp_schema({}))
 
         return self.async_show_form(
             step_id="zone",

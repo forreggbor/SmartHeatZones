@@ -1,8 +1,10 @@
 """
 SmartHeatZones - Options Flow
-Version: 1.11.0 (HA 2025.10+)
+Version: 1.12.0 (HA 2025.10+)
 Author: forreggbor
 
+CHANGELOG v1.12.0 (FEATURE)
+- Added: limp mode, backup outdoor source, backup sensor fields with validation; cleared optional fields are really removed
 CHANGELOG v1.11.0 (FEATURE)
 - Added: sensor silence limit field in the zone options
 
@@ -34,6 +36,16 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
+from .limp import (
+    COMMON_NULL_KEYS,
+    COMMON_OPTIONAL_KEYS,
+    ZONE_OPTIONAL_KEYS,
+    apply_optional_fields,
+    common_limp_schema,
+    validate_common_limp,
+    validate_zone_limp,
+    zone_limp_schema,
+)
 from .const import (
     DOMAIN,
     CONF_SENSOR,
@@ -112,20 +124,26 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         """Options flow for common settings."""
         _LOGGER.debug("[SmartHeatZones] Entered async_step_common_settings (options)")
 
+        errors = {}
         if user_input is not None:
-            # --- FIX: Correct deletion logic for optional outdoor sensor ---
-            outdoor_value = user_input.get(CONF_OUTDOOR_SENSOR)
-            if outdoor_value in ("", None):
-            # Remove key from config: HA treats missing selector key as unset
-                user_input.pop(CONF_OUTDOOR_SENSOR, None)
-            # Disable adaptive hysteresis, because outdoor sensor is required for it
-                _LOGGER.info("[SmartHeatZones] Outdoor sensor removed → disabling adaptive hysteresis")
-                user_input[CONF_ADAPTIVE_HYSTERESIS] = False
-            # --------------------------------------------------------------
+            errors = validate_common_limp(user_input)
+            if errors:
+                self._data.update(user_input)  # keep what was typed for the re-displayed form
+            else:
+                # --- FIX: Correct deletion logic for optional outdoor sensor ---
+                outdoor_value = user_input.get(CONF_OUTDOOR_SENSOR)
+                if outdoor_value in ("", None):
+                # Remove key from config: HA treats missing selector key as unset
+                    user_input.pop(CONF_OUTDOOR_SENSOR, None)
+                # Disable adaptive hysteresis, because outdoor sensor is required for it
+                    _LOGGER.info("[SmartHeatZones] Outdoor sensor removed → disabling adaptive hysteresis")
+                    user_input[CONF_ADAPTIVE_HYSTERESIS] = False
+                # --------------------------------------------------------------
 
-            self._data.update(user_input)
-            _LOGGER.info("[SmartHeatZones] Common settings options updated")
-            return await self._save_and_exit()
+                self._data.update(user_input)
+                apply_optional_fields(self._data, user_input, COMMON_OPTIONAL_KEYS, COMMON_NULL_KEYS)
+                _LOGGER.info("[SmartHeatZones] Common settings options updated")
+                return await self._save_and_exit()
 
         # Schema for common settings
         schema = vol.Schema(
@@ -167,11 +185,12 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                     default=self._data.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
                 ): selector.BooleanSelector(),
             }
-        )
+        ).extend(common_limp_schema(self._data))
 
         return self.async_show_form(
             step_id="common_settings",
             data_schema=schema,
+            errors=errors,
             description_placeholders={
                 "title": self._entry.title,
                 "version": INTEGRATION_VERSION,
@@ -186,10 +205,14 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         """Options flow for heating zone - v1.6.0 with common settings info."""
         _LOGGER.debug("[SmartHeatZones] Entered async_step_zone (options)")
 
+        errors = {}
         if user_input is not None:
+            errors = validate_zone_limp(user_input)
             self._data.update(user_input)
-            _LOGGER.info("[SmartHeatZones] Zone options updated for %s", self._entry.title)
-            return await self._save_and_exit()
+            if not errors:
+                apply_optional_fields(self._data, user_input, ZONE_OPTIONAL_KEYS)
+                _LOGGER.info("[SmartHeatZones] Zone options updated for %s", self._entry.title)
+                return await self._save_and_exit()
 
         # Get common settings for info display
         common_info = _get_common_settings_data(self.hass)
@@ -305,7 +328,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                     selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
                 ),
             }
-        )
+        ).extend(zone_limp_schema(self._data))
 
         # Add schedule blocks
         for i, block in enumerate(schedule[:4], start=1):
@@ -356,6 +379,7 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="zone",
             data_schema=schema,
+            errors=errors,
             description_placeholders={
                 "title": self._entry.title,
                 "version": INTEGRATION_VERSION,

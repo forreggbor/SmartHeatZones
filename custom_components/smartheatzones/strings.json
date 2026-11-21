@@ -11,7 +11,13 @@
           "hysteresis": "Alap hiszterézis (°C)",
           "overheat_temp": "Túlmelegedés védelem (°C)",
           "adaptive_hysteresis_enabled": "Adaptív hiszterézis",
-          "tempering_heating_enabled": "Melegítő fűtés"
+          "tempering_heating_enabled": "Melegítő fűtés",
+          "limp_radiator_on_min": "Korlátozott üzem – radiátor: bekapcsolt perc",
+          "limp_radiator_period_min": "Korlátozott üzem – radiátor: periódus (perc)",
+          "limp_underfloor_on_min": "Korlátozott üzem – padlófűtés: bekapcsolt perc",
+          "limp_underfloor_period_min": "Korlátozott üzem – padlófűtés: periódus (perc)",
+          "limp_outdoor_cutoff": "Korlátozott üzem – kültéri leállítási határ (°C)",
+          "outdoor_backup_sensor": "Tartalék kültéri forrás (opcionális)"
         },
         "data_description": {
           "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
@@ -19,7 +25,13 @@
           "hysteresis": "Alap kapcsolási hiszterézis - megakadályozza a gyakori be-ki kapcsolást (csak radiátorokhoz)",
           "overheat_temp": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés (védelem)",
           "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)",
-          "tempering_heating_enabled": "Koordinált fűtés: ha bármely zóna fűt, akkor minden célhőmérséklet alatti zónát is felfűt (kevesebb be-ki kapcsolás)"
+          "tempering_heating_enabled": "Koordinált fűtés: ha bármely zóna fűt, akkor minden célhőmérséklet alatti zónát is felfűt (kevesebb be-ki kapcsolás)",
+          "limp_radiator_on_min": "Ha egy zóna hőmérője nem megbízható és nincs tartalék, a radiátoros zóna periódusonként ennyi percig fűt (0 = nem fűt).",
+          "limp_radiator_period_min": "A ciklus hossza percben (10–720).",
+          "limp_underfloor_on_min": "Ha egy zóna hőmérője nem megbízható és nincs tartalék, a padlófűtéses zóna periódusonként ennyi percig fűt (0 = nem fűt).",
+          "limp_underfloor_period_min": "A ciklus hossza percben (10–720).",
+          "limp_outdoor_cutoff": "Ha a kültéri hőmérséklet (vagy a becslése) eléri ezt az értéket, a korlátozott üzem nem fűt (nyári védelem). Üresen hagyva kikapcsolva.",
+          "outdoor_backup_sensor": "Időjárás-entitás (weather.*) vagy szenzor, amelyet a korlátozott üzem használ, ha a kültéri hőmérő kiesik."
         }
       },
       "zone": {
@@ -33,7 +45,11 @@
           "sensor_entity_id": "Zóna hőmérő szenzor",
           "sensor_stale_hours": "Érzékelő csendhatár (óra)",
           "relay_entities": "Zóna relék",
-          "door_sensors": "Ajtó / ablak érzékelők"
+          "door_sensors": "Ajtó / ablak érzékelők",
+          "backup_sensor": "Tartalék hőmérő (opcionális)",
+          "backup_sensor_offset": "Tartalék hőmérő korrekció (°C)",
+          "limp_on_min": "Korlátozott üzem felülírása: bekapcsolt perc",
+          "limp_period_min": "Korlátozott üzem felülírása: periódus (perc)"
         },
         "data_description": {
           "title": "A fűtési zóna egyedi neve (pl. Földszint, Emelet)",
@@ -41,9 +57,13 @@
           "thermostat_type": "Fali termosztát (pontos mérés) vagy radiátorra szerelt termosztát (magasabb hőmérsékletet mér)",
           "temp_offset": "Hőmérséklet kompenzáció radiátor termosztátokhoz - a célhőmérséklethez hozzáadódik (alapértelmezett: 3°C)",
           "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
-          "sensor_stale_hours": "Biztonság: ha a hőmérő ennyi ideig nem jelentkezik, a zóna fűtése lekapcsol (alapérték: 2 óra). Csak ritkán jelentő érzékelőnél emeld.",
+          "sensor_stale_hours": "Biztonság: ha a hőmérő ennyi ideig nem jelentkezik, a zóna a tartalék hőmérőre vált, vagy korlátozott üzemre (alapérték: 2 óra). Csak ritkán jelentő érzékelőnél emeld.",
           "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
-          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)"
+          "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
+          "backup_sensor": "Ha a zóna hőmérője kiesik, a zóna erre vált át. Ha ez is kiesik, korlátozott üzem indul.",
+          "backup_sensor_offset": "A tartalék hőmérő értékéhez hozzáadódik (például radiátorra szerelt hőmérőnél negatív érték).",
+          "limp_on_min": "Üresen hagyva a közös beállítás érvényes. A két felülíró mezőt együtt kell kitölteni.",
+          "limp_period_min": "Üresen hagyva a közös beállítás érvényes. A két felülíró mezőt együtt kell kitölteni."
         }
       }
     },
@@ -53,7 +73,10 @@
       "boiler_required": "Kazán főkapcsoló megadása kötelező!",
       "title_required": "Zóna nevének megadása kötelező!",
       "sensor_required": "Hőmérő szenzor megadása kötelező!",
-      "relay_required": "Legalább egy zóna relé megadása kötelező!"
+      "relay_required": "Legalább egy zóna relé megadása kötelező!",
+      "limp_period_range": "A periódus 10 és 720 perc közötti egész szám legyen.",
+      "limp_on_exceeds_period": "A bekapcsolt idő nem lehet hosszabb a periódusnál.",
+      "limp_pair_required": "A felülíráshoz mindkét mezőt ki kell tölteni, vagy mindkettőt üresen kell hagyni."
     },
     "abort": {
       "single_instance_allowed": "Ez az integráció már konfigurálva van.",
@@ -72,7 +95,13 @@
           "hysteresis": "Alap hiszterézis (°C)",
           "overheat_temp": "Túlmelegedés védelem (°C)",
           "adaptive_hysteresis_enabled": "Adaptív hiszterézis",
-          "tempering_heating_enabled": "Melegítő fűtés"
+          "tempering_heating_enabled": "Melegítő fűtés",
+          "limp_radiator_on_min": "Korlátozott üzem – radiátor: bekapcsolt perc",
+          "limp_radiator_period_min": "Korlátozott üzem – radiátor: periódus (perc)",
+          "limp_underfloor_on_min": "Korlátozott üzem – padlófűtés: bekapcsolt perc",
+          "limp_underfloor_period_min": "Korlátozott üzem – padlófűtés: periódus (perc)",
+          "limp_outdoor_cutoff": "Korlátozott üzem – kültéri leállítási határ (°C)",
+          "outdoor_backup_sensor": "Tartalék kültéri forrás (opcionális)"
         },
         "data_description": {
           "boiler_main": "Közös kazán főkapcsoló (minden zónánál ugyanaz legyen)",
@@ -80,7 +109,13 @@
           "hysteresis": "Alap kapcsolási hiszterézis - csak radiátorokhoz (padlófűtésnél nincs hiszterézis)",
           "overheat_temp": "Ha a zóna hőmérséklete eléri ezt az értéket, azonnal lekapcsol a fűtés (védelem)",
           "adaptive_hysteresis_enabled": "Ha be van kapcsolva, a hiszterézis automatikusan nő hidegebb időben (stabilabb fűtés)",
-          "tempering_heating_enabled": "Koordinált fűtés: ha bármely zóna fűt, akkor minden célhőmérséklet alatti zónát is felfűt (kevesebb be-ki kapcsolás)"
+          "tempering_heating_enabled": "Koordinált fűtés: ha bármely zóna fűt, akkor minden célhőmérséklet alatti zónát is felfűt (kevesebb be-ki kapcsolás)",
+          "limp_radiator_on_min": "Ha egy zóna hőmérője nem megbízható és nincs tartalék, a radiátoros zóna periódusonként ennyi percig fűt (0 = nem fűt).",
+          "limp_radiator_period_min": "A ciklus hossza percben (10–720).",
+          "limp_underfloor_on_min": "Ha egy zóna hőmérője nem megbízható és nincs tartalék, a padlófűtéses zóna periódusonként ennyi percig fűt (0 = nem fűt).",
+          "limp_underfloor_period_min": "A ciklus hossza percben (10–720).",
+          "limp_outdoor_cutoff": "Ha a kültéri hőmérséklet (vagy a becslése) eléri ezt az értéket, a korlátozott üzem nem fűt (nyári védelem). Üresen hagyva kikapcsolva.",
+          "outdoor_backup_sensor": "Időjárás-entitás (weather.*) vagy szenzor, amelyet a korlátozott üzem használ, ha a kültéri hőmérő kiesik."
         }
       },
       "zone": {
@@ -109,22 +144,35 @@
           "label_4": "4. időszak neve",
           "start_4": "4. kezdés",
           "end_4": "4. vége",
-          "temp_4": "4. hőmérséklet"
+          "temp_4": "4. hőmérséklet",
+          "backup_sensor": "Tartalék hőmérő (opcionális)",
+          "backup_sensor_offset": "Tartalék hőmérő korrekció (°C)",
+          "limp_on_min": "Korlátozott üzem felülírása: bekapcsolt perc",
+          "limp_period_min": "Korlátozott üzem felülírása: periódus (perc)"
         },
         "data_description": {
           "heating_mode": "Válaszd ki a fűtési módot a zóna típusa alapján",
           "thermostat_type": "Fali termosztát (pontos mérés) vagy radiátorra szerelt termosztát (magasabb hőmérsékletet mér)",
           "temp_offset": "Hőmérséklet kompenzáció radiátor termosztátokhoz - a célhőmérséklethez hozzáadódik (alapértelmezett: 3°C)",
           "sensor_entity_id": "A zóna hőmérsékletét mérő szenzor entitás",
-          "sensor_stale_hours": "Biztonság: ha a hőmérő ennyi ideig nem jelentkezik, a zóna fűtése lekapcsol (alapérték: 2 óra). Csak ritkán jelentő érzékelőnél emeld.",
+          "sensor_stale_hours": "Biztonság: ha a hőmérő ennyi ideig nem jelentkezik, a zóna a tartalék hőmérőre vált, vagy korlátozott üzemre (alapérték: 2 óra). Csak ritkán jelentő érzékelőnél emeld.",
           "relay_entities": "A zóna szivattyúit/szelepeit kapcsoló relék (több is választható)",
           "door_sensors": "Ajtó/ablak érzékelők - nyitáskor fűtés szüneteltetése (opcionális)",
           "label_1": "Napszak neve (pl. Éjszaka, Reggel, Nappal, Este)",
           "start_1": "Napszak kezdete (óra:perc)",
           "end_1": "Napszak vége (óra:perc)",
-          "temp_1": "Célhőmérséklet ebben az időszakban"
+          "temp_1": "Célhőmérséklet ebben az időszakban",
+          "backup_sensor": "Ha a zóna hőmérője kiesik, a zóna erre vált át. Ha ez is kiesik, korlátozott üzem indul.",
+          "backup_sensor_offset": "A tartalék hőmérő értékéhez hozzáadódik (például radiátorra szerelt hőmérőnél negatív érték).",
+          "limp_on_min": "Üresen hagyva a közös beállítás érvényes. A két felülíró mezőt együtt kell kitölteni.",
+          "limp_period_min": "Üresen hagyva a közös beállítás érvényes. A két felülíró mezőt együtt kell kitölteni."
         }
       }
+    },
+    "error": {
+      "limp_period_range": "A periódus 10 és 720 perc közötti egész szám legyen.",
+      "limp_on_exceeds_period": "A bekapcsolt idő nem lehet hosszabb a periódusnál.",
+      "limp_pair_required": "A felülíráshoz mindkét mezőt ki kell tölteni, vagy mindkettőt üresen kell hagyni."
     }
   },
   "selector": {
@@ -187,6 +235,26 @@
           "description": "Válaszd ki a kívánt preset módot"
         }
       }
+    }
+  },
+  "exceptions": {
+    "failsafe_title": {
+      "message": "SmartHeatZones – {zone}"
+    },
+    "failsafe_sensor_backup": {
+      "message": "A(z) {zone} zóna hőmérője kiesett ({cause}). A zóna a tartalék hőmérőre ({backup}) váltott, a vezérlés normálisan működik.{diagnosis}"
+    },
+    "failsafe_sensor_limp": {
+      "message": "A(z) {zone} zóna egyik hőmérője sem használható ({cause}). Korlátozott üzem: {on} perc fűtés {period} percenként.{diagnosis}"
+    },
+    "failsafe_relay": {
+      "message": "A(z) {zone} zóna relé(i) nem elérhetők {minutes} perce: {relays}. A fűtés addig nem vezérelhető, amíg vissza nem térnek."
+    },
+    "failsafe_diagnosis_group": {
+      "message": " {platform}: {bad}/{total} hőmérő néma."
+    },
+    "failsafe_diagnosis_network": {
+      "message": " Több hőmérő is kiesett ugyanabból az integrációból, valószínűleg hálózati vagy koordinátor-hiba."
     }
   }
 }

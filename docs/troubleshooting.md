@@ -2,6 +2,20 @@
 
 ### Common Issues
 
+**Issue: Zone shows `sensor_fault` or `limp_active: true`**
+
+**Possible Causes:**
+- Zone sensor `unavailable` for more than 10 minutes, or silent longer than the sensor silence limit (dead battery, Zigbee/wifi network down)
+- Several sensors lost at once: look at the `groups` of the `smartheatzones_failsafe` event or at the notification text, many silent sensors of one integration mean a network or coordinator problem
+
+**Solution:**
+1. Check `sensor_source`: `backup` means normal control on the backup sensor, `none` means limp mode (see [Limp mode](advanced-features.md#limp-mode))
+2. Check the sensor and its network in Developer Tools → States; replace the battery or restart the coordinator
+3. The zone returns to normal control by itself when the sensor reports again
+4. If `relay_unavailable` is not empty, the relays cannot be controlled either: check the wifi or the relay's power
+
+---
+
 **Issue: "Common settings must be configured first" error when creating zone**
 
 **Solution:**

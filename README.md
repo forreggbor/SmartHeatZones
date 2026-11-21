@@ -1,4 +1,4 @@
-# SmartHeatZones v1.11.0
+# SmartHeatZones v1.12.0
 
 **Advanced Multi-Zone Heating Control for Home Assistant**
 
@@ -8,7 +8,7 @@
 
 [![Open in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=SmartHeatZones&category=integration)
 
-**Author:** forreggbor · **Current Version:** 1.11.0 · **Minimum HA Version:** 2025.10+
+**Author:** forreggbor · **Current Version:** 1.12.0 · **Minimum HA Version:** 2025.10+
 
 ---
 

@@ -1,8 +1,14 @@
 """
 SmartHeatZones - Climate Platform
-Version: 1.11.0 (HA 2025.10+ compatible)
+Version: 1.12.0 (HA 2025.10+ compatible)
 Author: forreggbor
 
+CHANGELOG v1.12.0 (FEATURE)
+- Added: backup temperature sensor, limp mode (open-loop heating cycle) when no sensor is usable, outdoor source chain
+- Added: fail-safe event, translated notifications, attributes sensor_source / limp_active / outdoor_source / relay_unavailable
+- Changed: a lost zone sensor no longer switches the heating off; the watchdog evaluates the sensor chain every minute and is error-isolated
+- Fixed: a relay that becomes unavailable is no longer taken for a manual switch-off; a returning relay gets the wanted state
+- Fixed: relay_fault is published right after a retry; stale boiler membership is released at setup
 CHANGELOG v1.11.0 (FEATURE)
 - Added: the sensor silence limit is a per-zone setting (default 2 h) and shown as sensor_stale_hours
 - Fixed: schedule timer and state listeners are removed with the entity (no duplicate commands after a reload)
@@ -69,6 +75,16 @@ from homeassistant.helpers.event import async_track_state_change_event, async_tr
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
+from . import notifications
+from .limp import resolve_limp
+from .sensor_health import (
+    OutdoorWindow,
+    effective_outdoor,
+    group_overview,
+    outdoor_multiplier,
+    read_outdoor,
+    sensor_problem,
+)
 from .const import (
     DOMAIN,
     DATA_BOILER_MAIN,
@@ -103,12 +119,22 @@ from .const import (
     PRESET_AWAY,
     PRESET_MODES,
     PRESET_TEMPERATURES,
-    ADAPTIVE_HYSTERESIS_MULTIPLIERS,
     LOG_PREFIX,
     ERR_OVERHEAT,
+    EVENT_FAILSAFE,
+    RELAY_UNAVAILABLE_NOTICE_AFTER,
     SENSOR_BAD_STATES,
+    SENSOR_SOURCE_BACKUP,
+    SENSOR_SOURCE_NONE,
+    SENSOR_SOURCE_PRIMARY,
     SENSOR_UNAVAILABLE_GRACE,
     CONF_SENSOR_STALE_HOURS,
+    CONF_BACKUP_SENSOR,
+    CONF_BACKUP_SENSOR_OFFSET,
+    CONF_LIMP_OUTDOOR_CUTOFF,
+    CONF_OUTDOOR_BACKUP_SENSOR,
+    DEFAULT_BACKUP_SENSOR_OFFSET,
+    DEFAULT_LIMP_OUTDOOR_CUTOFF,
     DEFAULT_SENSOR_STALE_HOURS,
     MIN_SENSOR_STALE_HOURS,
     MAX_SENSOR_STALE_HOURS,
@@ -152,6 +178,9 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     temp_offset = zone_data.get(CONF_TEMP_OFFSET, DEFAULT_TEMP_OFFSET)
     schedule = zone_data.get(CONF_SCHEDULE, [])
     sensor_stale_hours = zone_data.get(CONF_SENSOR_STALE_HOURS, DEFAULT_SENSOR_STALE_HOURS)
+    backup_sensor = zone_data.get(CONF_BACKUP_SENSOR)
+    backup_offset = zone_data.get(CONF_BACKUP_SENSOR_OFFSET, DEFAULT_BACKUP_SENSOR_OFFSET)
+    limp_on, limp_period = resolve_limp(common_settings, zone_data, heating_mode, name)
     
     if not schedule:
         _LOGGER.warning(
@@ -165,6 +194,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     overheat_temp = common_settings.get(CONF_OVERHEAT_PROTECTION, DEFAULT_OVERHEAT_TEMP)
     outdoor_sensor = common_settings.get(CONF_OUTDOOR_SENSOR)
     adaptive_hyst = common_settings.get(CONF_ADAPTIVE_HYSTERESIS, DEFAULT_ADAPTIVE_HYSTERESIS)
+    limp_cutoff = common_settings.get(CONF_LIMP_OUTDOOR_CUTOFF, DEFAULT_LIMP_OUTDOOR_CUTOFF)  # None = disabled
+    outdoor_backup = common_settings.get(CONF_OUTDOOR_BACKUP_SENSOR)
 
     _LOGGER.info(
         "%s Creating climate entity: %s | Mode=%s | ThermostatType=%s | Offset=%.1f°C | Sensor=%s | Relays=%s | Schedule=%d blocks",
@@ -191,6 +222,12 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         overheat_temp=overheat_temp,
         outdoor_sensor=outdoor_sensor,
         adaptive_hysteresis_enabled=adaptive_hyst,
+        backup_sensor_entity_id=backup_sensor,
+        backup_sensor_offset=backup_offset,
+        limp_on_minutes=limp_on,
+        limp_period_minutes=limp_period,
+        limp_outdoor_cutoff=limp_cutoff,
+        outdoor_backup_entity_id=outdoor_backup,
     )
     async_add_entities([entity])
     _LOGGER.info("%s Climate entity created for %s", LOG_PREFIX, name)
@@ -226,6 +263,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         overheat_temp: float,
         outdoor_sensor: Optional[str],
         adaptive_hysteresis_enabled: bool,
+        backup_sensor_entity_id: Optional[str],
+        backup_sensor_offset: float,
+        limp_on_minutes: int,
+        limp_period_minutes: int,
+        limp_outdoor_cutoff: Optional[float],
+        outdoor_backup_entity_id: Optional[str],
     ):
         """Initialize zone thermostat."""
         self.hass = hass
@@ -248,6 +291,14 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self._overheat_temp = overheat_temp
         self._outdoor_sensor = outdoor_sensor
         self._adaptive_hysteresis_enabled = adaptive_hysteresis_enabled
+        self._limp_outdoor_cutoff = limp_outdoor_cutoff
+        self._outdoor_backup_entity_id = outdoor_backup_entity_id
+
+        # Backup sensor and limp mode (zone settings, inherited from the common settings)
+        self._backup_sensor_entity_id = backup_sensor_entity_id
+        self._backup_sensor_offset = float(backup_sensor_offset or 0.0)
+        self._limp_on_minutes = limp_on_minutes
+        self._limp_period_minutes = limp_period_minutes
 
         # Runtime state
         self._current_temp = None
@@ -262,7 +313,15 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         # Fail-safe state (v1.10.1)
         self._sensor_fault: Optional[str] = None  # why the sensor is not trusted, None when fine
         self._sensor_bad_since: Optional[datetime] = None
+        self._backup_bad_since: Optional[datetime] = None  # "not readable since" clock of the backup sensor
+        self._sensor_source = SENSOR_SOURCE_PRIMARY  # which sensor the control currently runs on
+        self._outdoor_window = OutdoorWindow()  # cautious outdoor estimate for the limp mode
+        self._announced_state: Optional[str] = None  # last fail-safe state reported by event/notification
+        self._relay_notice_active = False  # an "unreachable relay" notification is showing
+        self._limp_state: Optional[tuple] = None  # last limp decision (wanted, detail), to log changes only
+        self._limp_outdoor_source: Optional[str] = None  # where the outdoor value of the last limp decision came from
         self._failed_relay_actions: dict[str, str] = {}  # relay entity -> command that failed
+        self._relay_unavailable_since: dict[str, datetime] = {}  # relay entity -> when it became unreachable
 
         _LOGGER.info(
             "%s [%s] Initialized | Mode=%s | Preset=%s | Overheat=%.1f°C",
@@ -322,6 +381,28 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                     _LOGGER.info("%s [%s] Initial temp: %.2f°C", LOG_PREFIX, self.name, self._current_temp)
                 except (ValueError, TypeError):
                     pass
+
+        # Backup temperature sensor (used only while the primary sensor is lost)
+        if self._backup_sensor_entity_id:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [self._backup_sensor_entity_id],
+                    self._backup_sensor_changed,
+                )
+            )
+
+        # Outdoor samples for the limp mode's cautious estimate (live sensor and backup source)
+        for outdoor_id in (self._outdoor_sensor, self._outdoor_backup_entity_id):
+            if outdoor_id:
+                self._record_outdoor_sample(outdoor_id)
+                self.async_on_remove(
+                    async_track_state_change_event(
+                        self.hass,
+                        [outdoor_id],
+                        self._outdoor_sample_changed,
+                    )
+                )
 
         # Event-based relay monitoring
         if self._relay_entities:
@@ -386,8 +467,25 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             if self._boiler_entity:
                 await self._boiler.turn_on(self._boiler_entity, zone=self.name)
 
+        # A notification of a previous run (or reload) may still be showing; the watchdog re-creates what is true
+        notifications.dismiss(self.hass, self.name, notifications.CAUSE_SENSOR)
+        notifications.dismiss(self.hass, self.name, notifications.CAUSE_RELAY)
+
+        # Relays that are already unreachable now (restart during a wifi outage)
+        for relay_id in self._relay_entities:
+            relay_state = self.hass.states.get(relay_id)
+            if relay_state is None or relay_state.state in SENSOR_BAD_STATES:
+                self._relay_unavailable_since[relay_id] = dt_util.utcnow()
+                _LOGGER.warning("%s [%s] Relay %s is not available at startup", LOG_PREFIX, self.name, relay_id)
+
+        # A reload leaves this zone registered at the boiler manager; release it when the zone is not heating
+        if self._boiler_entity and not self._is_heating and self.name in self._boiler.get_active_zones():
+            _LOGGER.warning("%s [%s] Releasing stale boiler membership left by a reload", LOG_PREFIX, self.name)
+            await self._boiler.turn_off(self._boiler_entity, zone=self.name)
+
         # Fail-safe watchdog (sensor health and retry of failed relay commands)
         self._sensor_problem()  # starts the "unavailable" clock if the sensor is not readable now
+        self._backup_reading()  # same for the backup sensor
         self.async_on_remove(
             async_track_time_interval(self.hass, self._watchdog, WATCHDOG_INTERVAL)
         )
@@ -470,15 +568,42 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
     @callback
     async def _relay_state_changed(self, event):
-        """Instant relay state change detection (event-based)."""
+        """
+        Instant relay state change detection (event-based).
+
+        A relay that becomes unreachable (wifi outage) is never read as "switched off by hand".
+        When it comes back, the zone's wanted state is pushed to it instead of adopting its old state.
+        """
         new_state = event.data.get("new_state")
         old_state = event.data.get("old_state")
 
-        if not new_state or not old_state:
+        if not new_state:
+            return
+
+        relay_id = new_state.entity_id
+        now = dt_util.utcnow()
+
+        if new_state.state in SENSOR_BAD_STATES:
+            if relay_id not in self._relay_unavailable_since:
+                self._relay_unavailable_since[relay_id] = now
+                _LOGGER.warning(
+                    "%s [%s] Relay %s is %s - cannot be controlled until it is back",
+                    LOG_PREFIX, self.name, relay_id, new_state.state
+                )
+                self.async_write_ha_state()
+            return
+
+        was_unreachable = (
+            relay_id in self._relay_unavailable_since
+            or old_state is None
+            or old_state.state in SENSOR_BAD_STATES
+        )
+        if was_unreachable:
+            self._relay_unavailable_since.pop(relay_id, None)
+            await self._relay_recovered(relay_id, new_state.state)
             return
 
         if new_state.state != old_state.state:
-            relay_id = new_state.entity_id
             _LOGGER.info(
                 "%s [%s] Relay state changed: %s → %s (event-based detection)",
                 LOG_PREFIX, self.name, relay_id, new_state.state.upper()
@@ -488,7 +613,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             relay_states = []
             for r_id in self._relay_entities:
                 r_state = self.hass.states.get(r_id)
-                if r_state:
+                if r_state and r_state.state not in SENSOR_BAD_STATES:
                     relay_states.append(r_state.state == "on")
 
             actual_heating = any(relay_states) if relay_states else False
@@ -509,6 +634,30 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
                 self.async_write_ha_state()
 
+    async def _relay_recovered(self, relay_id: str, state: str) -> None:
+        """
+        A relay is reachable again after being unavailable.
+
+        With a temperature basis (a reading or a declared sensor fault) the zone's wanted state is
+        pushed to the relay. Without any basis (the zone has not decided anything yet) a relay that is
+        on is taken over, like at startup, so the zone can still switch it off later.
+        """
+        has_basis = self._current_temp is not None or self._sensor_fault is not None
+        _LOGGER.warning(
+            "%s [%s] Relay %s is back (%s) | wanted heating=%s | decision basis=%s",
+            LOG_PREFIX, self.name, relay_id, state, self._is_heating, has_basis
+        )
+
+        if has_basis:
+            if (state == "on") != self._is_heating:
+                await self._call_switch_service("turn_on" if self._is_heating else "turn_off", relay_id)
+        elif state == "on" and not self._is_heating:
+            self._is_heating = True
+            if self._boiler_entity:
+                await self._boiler.turn_on(self._boiler_entity, zone=self.name)
+
+        self.async_write_ha_state()
+
     # ==================================================================================
     # SENSOR CALLBACKS
     # ==================================================================================
@@ -520,30 +669,43 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         if not new_state:
             return
 
-        if new_state.state in SENSOR_BAD_STATES:
-            _LOGGER.warning("%s [%s] Sensor unavailable (fail-safe after %s)", LOG_PREFIX, self.name, SENSOR_UNAVAILABLE_GRACE)
-            self._sensor_problem()  # starts the grace period
-            return
-
         try:
-            value = float(new_state.state)
+            if new_state.state in SENSOR_BAD_STATES:
+                _LOGGER.warning("%s [%s] Sensor unavailable (fail-safe after %s)", LOG_PREFIX, self.name, SENSOR_UNAVAILABLE_GRACE)
+                self._sensor_problem()  # starts the grace period
+                return
+
+            try:
+                value = float(new_state.state)
+            except (ValueError, TypeError):
+                _LOGGER.error("%s [%s] Invalid sensor value: %s", LOG_PREFIX, self.name, new_state.state)
+                self._sensor_problem()  # an unreadable value counts like "unavailable"
+                return
+
             self._current_temp = value
             self._sensor_bad_since = None
             if self._sensor_fault:
-                _LOGGER.warning(
-                    "%s [%s] Sensor recovered (%s) - normal control resumes",
-                    LOG_PREFIX, self.name, self._sensor_fault
-                )
-                self._sensor_fault = None
+                await self._end_fault_episode()
             _LOGGER.debug("%s [%s] Sensor: %.2f°C", LOG_PREFIX, self.name, self._current_temp)
+            await self._apply_reading()
+        except Exception:
+            _LOGGER.exception("%s [%s] Handling a sensor update FAILED", LOG_PREFIX, self.name)
 
-            await self._check_overheat_protection()
-            await self._auto_heat_restart()
-            await self._evaluate_heating()
+    @callback
+    async def _backup_sensor_changed(self, event):
+        """Backup sensor change: it only matters while the primary sensor is lost."""
+        try:
+            if self._sensor_fault is None:
+                return
+            await self._run_sensor_chain()
+        except Exception:
+            _LOGGER.exception("%s [%s] Handling a backup sensor update FAILED", LOG_PREFIX, self.name)
 
-        except (ValueError, TypeError):
-            _LOGGER.error("%s [%s] Invalid sensor value: %s", LOG_PREFIX, self.name, new_state.state)
-            self._sensor_problem()  # an unreadable value counts like "unavailable"
+    async def _apply_reading(self):
+        """Run the control logic on the current reading (primary or backup)."""
+        await self._check_overheat_protection()
+        await self._auto_heat_restart()
+        await self._evaluate_heating()
 
     @callback
     async def _outdoor_sensor_changed(self, event):
@@ -600,66 +762,280 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         """
         Why the temperature sensor cannot be trusted right now, or None when it is fine.
 
-        - "sensor_unavailable": no readable value for longer than SENSOR_UNAVAILABLE_GRACE
-        - "sensor_stale": a numeric sensor has not reported anything for the zone's silence limit
-          (setting "sensor_stale_hours", default 2 h)
-          (a dead battery usually leaves the last value in place instead of going unavailable)
+        Thin wrapper around sensor_health.sensor_problem() that keeps the "not readable since" clock.
         """
-        if not self._sensor_entity_id:
+        problem, self._sensor_bad_since = sensor_problem(
+            self.hass, self._sensor_entity_id, self._sensor_stale_timeout,
+            self._sensor_bad_since, dt_util.utcnow()
+        )
+        return problem
+
+    def _backup_reading(self) -> Optional[float]:
+        """
+        The backup sensor value (with its correction) when the backup sensor is trustworthy, else None.
+
+        Trustworthy = readable now, not silent for longer than the zone's silence limit.
+        """
+        if not self._backup_sensor_entity_id:
+            return None
+        problem, self._backup_bad_since = sensor_problem(
+            self.hass, self._backup_sensor_entity_id, self._sensor_stale_timeout,
+            self._backup_bad_since, dt_util.utcnow()
+        )
+        if problem:
+            return None
+        state = self.hass.states.get(self._backup_sensor_entity_id)
+        try:
+            return float(state.state) + self._backup_sensor_offset
+        except (AttributeError, ValueError, TypeError):
             return None
 
+    def _enter_fault_episode(self, problem: str):
+        """The primary sensor is declared lost."""
+        self._sensor_fault = problem
+        _LOGGER.error("%s [%s] FAIL-SAFE: primary sensor lost (%s)", LOG_PREFIX, self.name, problem)
+
+    async def _end_fault_episode(self):
+        """The primary sensor is back: normal control on the primary sensor resumes."""
+        cause = self._sensor_fault
+        _LOGGER.warning("%s [%s] Sensor recovered (%s) - normal control resumes", LOG_PREFIX, self.name, cause)
+        self._sensor_fault = None
+        self._sensor_source = SENSOR_SOURCE_PRIMARY
+        self._limp_state = None
+        self._limp_outdoor_source = None
+        await self._announce_sensor_state("recovered", cause)
+
+    def _diagnostic_sensor_ids(self) -> list[str]:
+        """Every temperature sensor the integration depends on (all zones, outdoor sources included)."""
+        ids: list[str] = []
+        for zone in self._boiler.get_zone_entities():
+            ids += [zone._sensor_entity_id, zone._backup_sensor_entity_id, zone._outdoor_sensor, zone._outdoor_backup_entity_id]
+        return [i for i in ids if i and i.split(".", 1)[0] == "sensor"]
+
+    async def _announce_sensor_state(self, state: str, cause: Optional[str]) -> None:
+        """
+        Report a sensor fail-safe state change ("backup", "limp" or "recovered") once.
+
+        Fires the smartheatzones_failsafe event and creates/replaces (or, on recovery, dismisses) the
+        zone's sensor notification. Never raises: a broken notifier must not disturb the control.
+        """
+        if state == "recovered":
+            if self._announced_state is None:
+                return
+            self._announced_state = None
+        elif self._announced_state == state:
+            return
+        else:
+            self._announced_state = state
+
+        try:
+            groups = group_overview(
+                self.hass, self._diagnostic_sensor_ids(), self._sensor_stale_timeout, dt_util.utcnow()
+            )
+            self.hass.bus.async_fire(EVENT_FAILSAFE, {
+                "zone": self.name,
+                "state": state,
+                "cause": cause,
+                "sensor_source": self._sensor_source,
+                "groups": groups,
+                "relays_unavailable": sorted(self._relay_unavailable_since),
+            })
+            if state == "recovered":
+                notifications.dismiss(self.hass, self.name, notifications.CAUSE_SENSOR)
+                return
+
+            diagnosis = ""
+            for group, info in groups.items():
+                if info["bad"]:
+                    diagnosis += await notifications.async_text(
+                        self.hass, "failsafe_diagnosis_group",
+                        platform=group.split("/", 1)[0], bad=info["bad"], total=info["total"],
+                    )
+            if any(info["bad"] >= 2 for info in groups.values()):
+                diagnosis += await notifications.async_text(self.hass, "failsafe_diagnosis_network")
+
+            if state == "backup":
+                await notifications.async_notify(
+                    self.hass, self.name, notifications.CAUSE_SENSOR, "failsafe_sensor_backup",
+                    cause=cause, backup=self._backup_sensor_entity_id, diagnosis=diagnosis,
+                )
+            else:
+                await notifications.async_notify(
+                    self.hass, self.name, notifications.CAUSE_SENSOR, "failsafe_sensor_limp",
+                    cause=cause, on=self._limp_on_minutes, period=self._limp_period_minutes, diagnosis=diagnosis,
+                )
+        except Exception:
+            _LOGGER.exception("%s [%s] Reporting the fail-safe state %r FAILED", LOG_PREFIX, self.name, state)
+
+    async def _check_relay_notice(self) -> None:
+        """
+        Notify when a relay has been unreachable for a long time while heating is wanted.
+
+        The notice and a "relay_unavailable"/"relay_recovered" event are sent once per episode.
+        """
         now = dt_util.utcnow()
-        state = self.hass.states.get(self._sensor_entity_id)
+        unreachable = {
+            relay: since for relay, since in self._relay_unavailable_since.items()
+            if now - since >= RELAY_UNAVAILABLE_NOTICE_AFTER
+        }
+        active = bool(unreachable) and self._is_heating
+        if active == self._relay_notice_active:
+            return
+        self._relay_notice_active = active
+        try:
+            relays = sorted(unreachable) if active else sorted(self._relay_unavailable_since)
+            self.hass.bus.async_fire(EVENT_FAILSAFE, {
+                "zone": self.name,
+                "state": "relay_unavailable" if active else "relay_recovered",
+                "relays": relays,
+            })
+            if active:
+                minutes = int(max((now - since).total_seconds() for since in unreachable.values()) // 60)
+                await notifications.async_notify(
+                    self.hass, self.name, notifications.CAUSE_RELAY, "failsafe_relay",
+                    minutes=minutes, relays=", ".join(relays),
+                )
+            else:
+                notifications.dismiss(self.hass, self.name, notifications.CAUSE_RELAY)
+        except Exception:
+            _LOGGER.exception("%s [%s] Reporting the relay state FAILED", LOG_PREFIX, self.name)
 
-        readable = False
-        if state is not None and state.state not in SENSOR_BAD_STATES:
-            try:
-                float(state.state)
-                readable = True
-            except (ValueError, TypeError):
-                readable = False
+    async def _run_sensor_chain(self):
+        """
+        One evaluation of the sensor chain: primary sensor -> backup sensor -> (no sensor).
 
-        if not readable:
-            if self._sensor_bad_since is None:
-                self._sensor_bad_since = now
-            if now - self._sensor_bad_since >= SENSOR_UNAVAILABLE_GRACE:
-                return "sensor_unavailable"
-            return None
-
-        self._sensor_bad_since = None
-        last_seen = max(state.last_updated, getattr(state, "last_reported", state.last_updated))
-        if now - last_seen >= self._sensor_stale_timeout:
-            return "sensor_stale"
-        return None
-
-    async def _watchdog(self, now=None):
-        """Periodic fail-safe: shut the heating down on a lost sensor, retry failed relay commands."""
+        - primary fine: normal control (a declared fault ends here)
+        - primary lost, backup fine: normal control on the backup reading
+        - primary and backup lost: no reading; the heating is switched off
+        """
         problem = self._sensor_problem()
 
-        if problem and self._sensor_fault is None:
-            self._sensor_fault = problem
-            self._current_temp = None  # never decide on an old value (also blocks piggyback heating)
-            _LOGGER.error(
-                "%s [%s] FAIL-SAFE: %s - heating switched off until the sensor is back",
-                LOG_PREFIX, self.name, problem
-            )
-            await self._set_heating(False, reason=f"Fail-safe: {problem}")
-            self.async_write_ha_state()
-        elif not problem and self._sensor_fault is not None:
-            state = self.hass.states.get(self._sensor_entity_id)
-            try:
-                self._current_temp = float(state.state)
-            except (AttributeError, ValueError, TypeError):
-                return
-            _LOGGER.warning(
-                "%s [%s] Sensor recovered (%s) - normal control resumes",
-                LOG_PREFIX, self.name, self._sensor_fault
-            )
-            self._sensor_fault = None
-            await self._evaluate_heating()
-            self.async_write_ha_state()
+        if problem is None:
+            if self._sensor_fault is not None:
+                state = self.hass.states.get(self._sensor_entity_id)
+                try:
+                    self._current_temp = float(state.state)
+                except (AttributeError, ValueError, TypeError):
+                    _LOGGER.error("%s [%s] Sensor reports no number after recovery", LOG_PREFIX, self.name)
+                    return
+                await self._end_fault_episode()
+                await self._apply_reading()
+                self.async_write_ha_state()
+            return
 
-        await self._retry_failed_commands()
+        if self._sensor_fault is None:
+            self._enter_fault_episode(problem)
+        elif self._sensor_fault != problem:
+            _LOGGER.warning("%s [%s] Sensor fault changed: %s → %s", LOG_PREFIX, self.name, self._sensor_fault, problem)
+            self._sensor_fault = problem
+
+        backup = self._backup_reading()
+        if backup is not None:
+            if self._sensor_source != SENSOR_SOURCE_BACKUP:
+                _LOGGER.warning(
+                    "%s [%s] Running on the backup sensor %s (%.2f°C)",
+                    LOG_PREFIX, self.name, self._backup_sensor_entity_id, backup
+                )
+            self._sensor_source = SENSOR_SOURCE_BACKUP
+            self._limp_state = None
+            self._limp_outdoor_source = None
+            self._current_temp = backup
+            await self._announce_sensor_state("backup", self._sensor_fault)
+            await self._apply_reading()
+        else:
+            if self._sensor_source != SENSOR_SOURCE_NONE or self._current_temp is not None:
+                self._sensor_source = SENSOR_SOURCE_NONE
+                self._current_temp = None  # never decide on an old value (also blocks piggyback heating)
+                _LOGGER.error(
+                    "%s [%s] FAIL-SAFE: no usable temperature sensor - limp mode (%d min on per %d min)",
+                    LOG_PREFIX, self.name, self._limp_on_minutes, self._limp_period_minutes
+                )
+            await self._announce_sensor_state("limp", self._sensor_fault)
+            await self._apply_limp()
+        self.async_write_ha_state()
+
+    # ==================================================================================
+    # LIMP MODE (open-loop heating while no temperature sensor can be trusted)
+    # ==================================================================================
+
+    def _record_outdoor_sample(self, entity_id: str) -> None:
+        """Feed a valid outdoor reading into the cautious-estimate window."""
+        now = dt_util.utcnow()
+        value = read_outdoor(self.hass, entity_id, now)
+        if value is not None:
+            self._outdoor_window.add(now, value)
+
+    @callback
+    async def _outdoor_sample_changed(self, event):
+        """Outdoor sensor or backup source reported: remember the value for the estimate."""
+        try:
+            self._record_outdoor_sample(event.data["entity_id"])
+        except Exception:
+            _LOGGER.exception("%s [%s] Recording an outdoor sample FAILED", LOG_PREFIX, self.name)
+
+    def _limp_decision(self) -> tuple[bool, str]:
+        """
+        Whether the heating should be on right now in limp mode, and why.
+
+        The target temperature is ignored (there is no reading to compare it with). HVAC OFF and open
+        doors/windows still switch the heating off. Otherwise heating runs for "on minutes" of every
+        period, counted from local midnight; the on time is scaled by the outdoor temperature band and
+        the cycle stops when it is warm outside (summer).
+        """
+        if self._hvac_mode == HVACMode.OFF:
+            return False, "HVAC off"
+        for door in self._door_sensors:
+            state = self.hass.states.get(door)
+            if state and state.state == "on":
+                return False, "door/window open"
+
+        outdoor, source = effective_outdoor(
+            self.hass, self._outdoor_sensor, self._outdoor_backup_entity_id,
+            self._outdoor_window, dt_util.utcnow()
+        )
+        self._limp_outdoor_source = source
+        if outdoor is not None and self._limp_outdoor_cutoff is not None and outdoor >= self._limp_outdoor_cutoff:
+            return False, f"outdoor {outdoor:.1f}°C ({source}) >= cut-off {self._limp_outdoor_cutoff:.1f}°C"
+
+        multiplier = outdoor_multiplier(outdoor) if outdoor is not None else 1.0
+        on_minutes = min(self._limp_period_minutes, round(self._limp_on_minutes * multiplier))
+        local = dt_util.now()
+        phase = (local.hour * 60 + local.minute) % self._limp_period_minutes
+        wanted = phase < on_minutes
+        outdoor_txt = f"{outdoor:.1f}°C ({source})" if outdoor is not None else "unknown"
+        return wanted, (
+            f"{on_minutes}/{self._limp_period_minutes} min, phase {phase}, outdoor {outdoor_txt} x{multiplier}"
+        )
+
+    async def _apply_limp(self):
+        """Apply the limp decision through the normal switching path (relays, boiler, retries)."""
+        wanted, detail = self._limp_decision()
+        if self._limp_state != (wanted, detail.split(", phase")[0]):
+            _LOGGER.warning(
+                "%s [%s] LIMP MODE: heating %s (%s)", LOG_PREFIX, self.name, "ON" if wanted else "OFF", detail
+            )
+        self._limp_state = (wanted, detail.split(", phase")[0])
+        await self._set_heating(wanted, reason=f"Limp mode: {detail}")
+
+    async def _watchdog(self, now=None):
+        """
+        Periodic fail-safe (every minute): sensor chain, then retry of failed relay commands.
+
+        Both parts are isolated: an error in one is logged and never stops the other.
+        """
+        try:
+            await self._run_sensor_chain()
+        except Exception:
+            _LOGGER.exception("%s [%s] Watchdog: sensor chain evaluation FAILED", LOG_PREFIX, self.name)
+
+        try:
+            await self._retry_failed_commands()
+        except Exception:
+            _LOGGER.exception("%s [%s] Watchdog: retry of failed commands FAILED", LOG_PREFIX, self.name)
+
+        await self._check_relay_notice()
+
+        self.async_write_ha_state()  # a retry changes relay_fault; publish it right away
 
     async def _retry_failed_commands(self):
         """
@@ -760,11 +1136,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         if not self._adaptive_hysteresis_enabled or self._outdoor_temp is None:
             return self._base_hysteresis
 
-        multiplier = 1.0
-        for temp_threshold, mult in sorted(ADAPTIVE_HYSTERESIS_MULTIPLIERS.items()):
-            if self._outdoor_temp < temp_threshold:
-                multiplier = mult
-                break
+        multiplier = outdoor_multiplier(self._outdoor_temp)
 
         effective_hyst = self._base_hysteresis * multiplier
 
@@ -1056,8 +1428,14 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             "base_hysteresis": self._base_hysteresis,
             "preset_temperatures": dict(PRESET_TEMPERATURES),
             "sensor_fault": self._sensor_fault,
+            "sensor_source": self._sensor_source,
             "sensor_stale_hours": self._sensor_stale_timeout.total_seconds() / 3600,
             "relay_fault": sorted(self._failed_relay_actions),
+            "relay_unavailable": sorted(self._relay_unavailable_since),
+            "limp_active": self._sensor_fault is not None and self._sensor_source == SENSOR_SOURCE_NONE,
+            "outdoor_source": self._limp_outdoor_source,
+            "limp_on_minutes": self._limp_on_minutes,
+            "limp_period_minutes": self._limp_period_minutes,
         }
 
         if self._adaptive_hysteresis_enabled and self._outdoor_temp is not None:
