@@ -847,12 +847,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             diagnosis = ""
             for group, info in groups.items():
                 if info["bad"]:
-                    diagnosis += await notifications.async_text(
+                    diagnosis += " " + await notifications.async_text(
                         self.hass, "failsafe_diagnosis_group",
                         platform=group.split("/", 1)[0], bad=info["bad"], total=info["total"],
                     )
             if any(info["bad"] >= 2 for info in groups.values()):
-                diagnosis += await notifications.async_text(self.hass, "failsafe_diagnosis_network")
+                diagnosis += " " + await notifications.async_text(self.hass, "failsafe_diagnosis_network")
 
             if state == "backup":
                 await notifications.async_notify(

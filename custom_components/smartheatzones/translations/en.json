@@ -249,10 +249,10 @@
       "message": "The relay(s) of zone {zone} have been unreachable for {minutes} minutes: {relays}. The heating cannot be controlled until they are back."
     },
     "failsafe_diagnosis_group": {
-      "message": " {platform}: {bad}/{total} sensors silent."
+      "message": "{platform}: {bad}/{total} sensors silent."
     },
     "failsafe_diagnosis_network": {
-      "message": " Several sensors of the same integration are lost, probably a network or coordinator problem."
+      "message": "Several sensors of the same integration are lost, probably a network or coordinator problem."
     }
   }
 }

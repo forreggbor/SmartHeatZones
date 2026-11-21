@@ -249,10 +249,10 @@
       "message": "A(z) {zone} zóna relé(i) nem elérhetők {minutes} perce: {relays}. A fűtés addig nem vezérelhető, amíg vissza nem térnek."
     },
     "failsafe_diagnosis_group": {
-      "message": " {platform}: {bad}/{total} hőmérő néma."
+      "message": "{platform}: {bad}/{total} hőmérő néma."
     },
     "failsafe_diagnosis_network": {
-      "message": " Több hőmérő is kiesett ugyanabból az integrációból, valószínűleg hálózati vagy koordinátor-hiba."
+      "message": "Több hőmérő is kiesett ugyanabból az integrációból, valószínűleg hálózati vagy koordinátor-hiba."
     }
   }
 }
