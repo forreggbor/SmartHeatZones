@@ -2,6 +2,21 @@
 
 This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
 
+## Version 1.12.1 (2026-11-21) – Maintenance Release
+
+| Category | Description |
+|----------|-------------|
+| Fixed    | The sensor-loss notification texts pass the Home Assistant translation check |
+| Changed  | Automated checks use the current version of the checkout step (no more Node.js 20 warning) |
+
+### Changed
+
+- **Automated checks.** The repository checks now use the current checkout step, which removes the Node.js 20 deprecation warning.
+
+### Fixed
+
+- **Notification texts.** Two parts of the sensor-loss notification (the lost-sensor count and the likely network problem hint) had a stray leading space that made the Home Assistant translation check fail. The texts are unchanged for the reader.
+
 ## Version 1.12.0 (2026-11-21) – Feature Release
 
 | Category | Description |

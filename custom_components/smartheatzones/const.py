@@ -67,7 +67,7 @@ from datetime import timedelta
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.12.0"  # Integration version displayed in UI
+INTEGRATION_VERSION = "1.12.1"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
