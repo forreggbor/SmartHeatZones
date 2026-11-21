@@ -13,5 +13,5 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@{"message":"Not Found","documentation_url":"https://docs.github.com/rest/git/tags#get-a-tag","status":"404"} # v6.1.0
       - uses: home-assistant/actions/hassfest@07f46fd2e19967768b5fd3000f91f857452b767c # master
