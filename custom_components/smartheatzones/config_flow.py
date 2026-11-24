@@ -58,6 +58,8 @@ from .const import (
     CONF_THERMOSTAT_TYPE,
     CONF_TEMP_OFFSET,
     CONF_SENSOR_STALE_HOURS,
+    CONF_AFTERHEAT,
+    DEFAULT_AFTERHEAT,
     CONF_IS_COMMON_SETTINGS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
@@ -259,6 +261,10 @@ class SmartHeatZonesFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         mode="box"
                     )
                 ),
+                vol.Optional(
+                    CONF_AFTERHEAT,
+                    default=DEFAULT_AFTERHEAT
+                ): selector.BooleanSelector(),
                 vol.Optional(CONF_ZONE_RELAYS): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="switch", multiple=True)
                 ),

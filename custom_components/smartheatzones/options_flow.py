@@ -61,6 +61,8 @@ from .const import (
     CONF_THERMOSTAT_TYPE,
     CONF_TEMP_OFFSET,
     CONF_SENSOR_STALE_HOURS,
+    CONF_AFTERHEAT,
+    DEFAULT_AFTERHEAT,
     CONF_IS_COMMON_SETTINGS,
     DEFAULT_HYSTERESIS,
     DEFAULT_OVERHEAT_TEMP,
@@ -311,6 +313,12 @@ class SmartHeatZonesOptionsFlowHandler(config_entries.OptionsFlow):
                         mode="box"
                     )
                 ),
+
+                # Afterheat (v1.13.0): join a boiler that already runs for another zone
+                vol.Optional(
+                    CONF_AFTERHEAT,
+                    default=self._data.get(CONF_AFTERHEAT, DEFAULT_AFTERHEAT)
+                ): selector.BooleanSelector(),
 
                 # Zone relays
                 vol.Optional(

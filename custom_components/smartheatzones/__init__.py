@@ -51,6 +51,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from .const import (
     DOMAIN,
     PLATFORMS,
+    PLATFORMS_COMMON,
     DATA_BOILER_MAIN,
     DATA_ACTIVE_ZONES,
     DATA_ENTRIES,
@@ -108,8 +109,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN][DATA_COMMON_SETTINGS] = entry
         _LOGGER.info("%s Common settings registered", LOG_PREFIX)
         
-        # Common settings don't create climate entities, just store config
-        # No platform setup needed. A change is applied by reloading the zones (never this entry).
+        # The shared boiler manager exists as soon as the common entry is loaded (the overview entity reads it)
+        if DATA_BOILER_MAIN not in hass.data[DOMAIN]:
+            hass.data[DOMAIN][DATA_BOILER_MAIN] = BoilerManager(hass)
+            _LOGGER.debug("%s BoilerManager instance created", LOG_PREFIX)
+
+        # Common settings create only the overview sensor. A change is applied by reloading the zones (never this entry).
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS_COMMON)
         entry.async_on_unload(entry.add_update_listener(async_reload_zones))
         return True
 
@@ -185,10 +191,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     is_common = entry.data.get(CONF_IS_COMMON_SETTINGS, False)
 
     if is_common:
-        # Common settings unload - just cleanup
-        hass.data[DOMAIN].pop(DATA_COMMON_SETTINGS, None)
-        _LOGGER.info("%s Common settings unloaded", LOG_PREFIX)
-        return True
+        # Common settings unload: the overview entity first, the settings stay until it is gone
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS_COMMON)
+        if unload_ok:
+            hass.data[DOMAIN].pop(DATA_COMMON_SETTINGS, None)
+            _LOGGER.info("%s Common settings unloaded", LOG_PREFIX)
+        else:
+            _LOGGER.error("%s Common settings unload FAILED - the overview entity could not be unloaded", LOG_PREFIX)
+        return unload_ok
 
     # Zone unload
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

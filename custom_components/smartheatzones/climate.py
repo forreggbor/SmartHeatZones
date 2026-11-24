@@ -85,6 +85,7 @@ from .sensor_health import (
     read_outdoor,
     sensor_problem,
 )
+from .decision import decision_reason, next_schedule_change
 from .const import (
     DOMAIN,
     DATA_BOILER_MAIN,
@@ -129,6 +130,8 @@ from .const import (
     SENSOR_SOURCE_PRIMARY,
     SENSOR_UNAVAILABLE_GRACE,
     CONF_SENSOR_STALE_HOURS,
+    CONF_AFTERHEAT,
+    DEFAULT_AFTERHEAT,
     CONF_BACKUP_SENSOR,
     CONF_BACKUP_SENSOR_OFFSET,
     CONF_LIMP_OUTDOOR_CUTOFF,
@@ -178,6 +181,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     temp_offset = zone_data.get(CONF_TEMP_OFFSET, DEFAULT_TEMP_OFFSET)
     schedule = zone_data.get(CONF_SCHEDULE, [])
     sensor_stale_hours = zone_data.get(CONF_SENSOR_STALE_HOURS, DEFAULT_SENSOR_STALE_HOURS)
+    afterheat = zone_data.get(CONF_AFTERHEAT, DEFAULT_AFTERHEAT)
     backup_sensor = zone_data.get(CONF_BACKUP_SENSOR)
     backup_offset = zone_data.get(CONF_BACKUP_SENSOR_OFFSET, DEFAULT_BACKUP_SENSOR_OFFSET)
     limp_on, limp_period = resolve_limp(common_settings, zone_data, heating_mode, name)
@@ -228,6 +232,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         limp_period_minutes=limp_period,
         limp_outdoor_cutoff=limp_cutoff,
         outdoor_backup_entity_id=outdoor_backup,
+        afterheat=afterheat,
     )
     async_add_entities([entity])
     _LOGGER.info("%s Climate entity created for %s", LOG_PREFIX, name)
@@ -269,6 +274,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         limp_period_minutes: int,
         limp_outdoor_cutoff: Optional[float],
         outdoor_backup_entity_id: Optional[str],
+        afterheat: bool = False,
     ):
         """Initialize zone thermostat."""
         self.hass = hass
@@ -293,6 +299,8 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self._adaptive_hysteresis_enabled = adaptive_hysteresis_enabled
         self._limp_outdoor_cutoff = limp_outdoor_cutoff
         self._outdoor_backup_entity_id = outdoor_backup_entity_id
+        self._afterheat = bool(afterheat)
+        self._afterheat_joined = False  # heating only because the boiler runs for another zone
 
         # Backup sensor and limp mode (zone settings, inherited from the common settings)
         self._backup_sensor_entity_id = backup_sensor_entity_id
@@ -320,6 +328,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         self._relay_notice_active = False  # an "unreachable relay" notification is showing
         self._limp_state: Optional[tuple] = None  # last limp decision (wanted, detail), to log changes only
         self._limp_outdoor_source: Optional[str] = None  # where the outdoor value of the last limp decision came from
+        self._limp_effective_on: Optional[int] = None  # scaled "on minutes" of the last limp decision, None when none applies
         self._failed_relay_actions: dict[str, str] = {}  # relay entity -> command that failed
         self._relay_unavailable_since: dict[str, datetime] = {}  # relay entity -> when it became unreachable
 
@@ -464,8 +473,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 LOG_PREFIX, self.name
             )
             self._is_heating = True
+            # A reload keeps the manager: a zone that had only joined by afterheat stays marked as such
+            self._afterheat_joined = self._boiler.is_afterheat_member(self.name)
             if self._boiler_entity:
-                await self._boiler.turn_on(self._boiler_entity, zone=self.name)
+                await self._boiler.turn_on(self._boiler_entity, zone=self.name, afterheat=self._afterheat_joined)
 
         # A notification of a previous run (or reload) may still be showing; the watchdog re-creates what is true
         notifications.dismiss(self.hass, self.name, notifications.CAUSE_SENSOR)
@@ -982,6 +993,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         period, counted from local midnight; the on time is scaled by the outdoor temperature band and
         the cycle stops when it is warm outside (summer).
         """
+        self._limp_effective_on = None  # set below only when the cycle really applies (never a stale value)
         if self._hvac_mode == HVACMode.OFF:
             return False, "HVAC off"
         for door in self._door_sensors:
@@ -999,6 +1011,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
 
         multiplier = outdoor_multiplier(outdoor) if outdoor is not None else 1.0
         on_minutes = min(self._limp_period_minutes, round(self._limp_on_minutes * multiplier))
+        self._limp_effective_on = on_minutes
         local = dt_util.now()
         phase = (local.hour * 60 + local.minute) % self._limp_period_minutes
         wanted = phase < on_minutes
@@ -1032,6 +1045,12 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             await self._retry_failed_commands()
         except Exception:
             _LOGGER.exception("%s [%s] Watchdog: retry of failed commands FAILED", LOG_PREFIX, self.name)
+
+        try:
+            if self._afterheat and not self._is_heating and self._boiler.has_real_demand():
+                await self._evaluate_heating()  # join a running boiler without waiting for the next reading
+        except Exception:
+            _LOGGER.exception("%s [%s] Watchdog: afterheat evaluation FAILED", LOG_PREFIX, self.name)
 
         await self._check_relay_notice()
 
@@ -1301,23 +1320,36 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         else:
             # Radiator: WITH hysteresis
             if diff > effective_hysteresis:
-                await self._set_heating(True, reason=f"Needs heat (diff={diff:.2f}°C)")
+                if self._is_heating and self._afterheat_joined:
+                    # The zone itself wants heat now: it is real demand, no longer just riding along
+                    self._afterheat_joined = False
+                    if self._boiler_entity:
+                        await self._boiler.turn_on(self._boiler_entity, zone=self.name, afterheat=False)
+                else:
+                    await self._set_heating(True, reason=f"Needs heat (diff={diff:.2f}°C)")
             elif diff < -effective_hysteresis:
                 await self._set_heating(False, reason=f"Too warm (diff={diff:.2f}°C)")
+            elif self._afterheat and not self._is_heating and diff > 0 and self._boiler.has_real_demand():
+                _LOGGER.info(
+                    "%s [%s] AFTERHEAT: current=%.2f°C < target=%.2f°C, boiler runs for %s",
+                    LOG_PREFIX, self.name, self._current_temp, adjusted_target, self._boiler.get_active_zones()
+                )
+                await self._set_heating(True, reason="Afterheat (boiler already running)", afterheat=True)
 
-    async def _set_heating(self, enable: bool, reason: Optional[str] = None):
+    async def _set_heating(self, enable: bool, reason: Optional[str] = None, afterheat: bool = False):
         """Control relays and boiler."""
         if enable == self._is_heating:
             return
 
         self._is_heating = enable
+        self._afterheat_joined = enable and afterheat
         state_txt = "ON" if enable else "OFF"
 
         if enable:
             for relay in self._relay_entities:
                 await self._call_switch_service("turn_on", relay)
             if self._boiler_entity:
-                await self._boiler.turn_on(self._boiler_entity, zone=self.name)
+                await self._boiler.turn_on(self._boiler_entity, zone=self.name, afterheat=afterheat)
         else:
             for relay in self._relay_entities:
                 await self._call_switch_service("turn_off", relay)
@@ -1415,6 +1447,98 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
     def target_temperature(self) -> float:
         return self._target_temp
 
+    def _door_open(self) -> bool:
+        """True if any door/window sensor of the zone is open."""
+        return any(
+            (state := self.hass.states.get(door)) is not None and state.state == "on"
+            for door in self._door_sensors
+        )
+
+    def _limp_active(self) -> bool:
+        """True while the zone runs in limp mode (no usable sensor)."""
+        return self._sensor_fault is not None and self._sensor_source == SENSOR_SOURCE_NONE
+
+    def _limp_next_in_min(self) -> Optional[int]:
+        """Minutes until limp heating starts: None without a cycle, 0 while it is on, else the wait (bounded by midnight)."""
+        if not self._limp_active() or self._limp_effective_on is None:
+            return None
+        local = dt_util.now()
+        minute_of_day = local.hour * 60 + local.minute
+        phase = minute_of_day % self._limp_period_minutes
+        if phase < self._limp_effective_on:
+            return 0
+        return min(self._limp_period_minutes - phase, 24 * 60 - minute_of_day)
+
+    def _reason(self, with_next: bool) -> dict:
+        """The decision reason of the zone's current state (language-neutral)."""
+        target = self._get_adjusted_target_temp()
+        hysteresis = self._get_effective_hysteresis()
+        limp_active = self._limp_active()
+        reason = decision_reason(
+            hvac_off=self._hvac_mode == HVACMode.OFF,
+            no_reading=self._current_temp is None,
+            door_open=self._door_open(),
+            overheat=self._current_temp is not None and self._current_temp >= self._overheat_temp,
+            limp_active=limp_active,
+            limp_heating=limp_active and self._is_heating,
+            limp_next_in_min=self._limp_next_in_min() if with_next else None,
+            heating=self._is_heating,
+            joined=self._afterheat_joined,
+            current=self._current_temp,
+            target=target,
+            on_below=target - hysteresis,
+            off_above=target + hysteresis,
+        )
+        if not with_next:
+            reason.pop("next_in_min", None)  # a changing value would write the climate state every minute
+        return reason
+
+    def _safe_reason(self) -> Optional[dict]:
+        """Reason for the climate attributes; a failure is logged and never blocks the state write."""
+        try:
+            return self._reason(with_next=False)
+        except Exception:
+            _LOGGER.exception("%s [%s] Computing the decision reason FAILED", LOG_PREFIX, self.name)
+            return None
+
+    def overview_snapshot(self) -> dict:
+        """All data of this zone for the overview entity; every key is always present."""
+        target = self._get_adjusted_target_temp()
+        hysteresis = self._get_effective_hysteresis()
+        next_change = None
+        if self._preset_mode == PRESET_AUTO:
+            next_change = next_schedule_change(self._schedule, datetime.now())
+        return {
+            "name": self.name,
+            "entity_id": self.entity_id,
+            "sensor_entity": self._sensor_entity_id,
+            "heating_mode": self._heating_mode,
+            "hvac_mode": str(self._hvac_mode),
+            "hvac_action": self.hvac_action,
+            "preset": self._preset_mode,
+            "current": self._current_temp,
+            "target": self._target_temp,
+            "adjusted_target": target,
+            "hysteresis": hysteresis,
+            "on_below": target - hysteresis,
+            "off_above": target + hysteresis,
+            "sensor_source": self._sensor_source,
+            "sensor_fault": self._sensor_fault,
+            "limp": {
+                "active": self._limp_active(),
+                "on_min": self._limp_on_minutes,
+                "effective_on_min": self._limp_effective_on if self._limp_active() else None,
+                "period_min": self._limp_period_minutes,
+                "next_in_min": self._limp_next_in_min(),
+            },
+            "next_change": next_change,
+            "afterheat": self._afterheat,
+            "joined": self._afterheat_joined,
+            "relay_unavailable": sorted(self._relay_unavailable_since),
+            "relay_fault": sorted(self._failed_relay_actions),
+            "reason": self._reason(with_next=True),
+        }
+
     @property
     def extra_state_attributes(self):
         """Extra attributes."""
@@ -1430,12 +1554,14 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             "sensor_fault": self._sensor_fault,
             "sensor_source": self._sensor_source,
             "sensor_stale_hours": self._sensor_stale_timeout.total_seconds() / 3600,
+            "afterheat": self._afterheat,
             "relay_fault": sorted(self._failed_relay_actions),
             "relay_unavailable": sorted(self._relay_unavailable_since),
             "limp_active": self._sensor_fault is not None and self._sensor_source == SENSOR_SOURCE_NONE,
             "outdoor_source": self._limp_outdoor_source,
             "limp_on_minutes": self._limp_on_minutes,
             "limp_period_minutes": self._limp_period_minutes,
+            "reason": self._safe_reason(),
         }
 
         if self._adaptive_hysteresis_enabled and self._outdoor_temp is not None:

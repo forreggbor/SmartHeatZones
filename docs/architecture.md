@@ -66,6 +66,13 @@ SmartHeatZones uses a **hub-and-spoke architecture**:
 - Tracks active zones
 - Prevents redundant switching
 - Manages boiler relay state
+- Daily counters (starts, runtime, afterheat joins) and change listeners
+
+**decision.py:**
+- Pure functions: the reason of a zone's state and the next scheduled change
+
+**overview.py / sensor.py:**
+- `sensor.smartheatzones_overview`: one entity with the state of the boiler and all zones (see Advanced Features)
 
 **config_flow.py:**
 - GUI configuration interface

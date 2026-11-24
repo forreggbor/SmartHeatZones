@@ -100,6 +100,17 @@
 - Configured once in common settings
 - Automatically propagated to all zones
 
+### Afterheat
+
+A zone with the **Afterheat** option (zone settings, off by default) joins a boiler that is already running, instead of starting the boiler on its own later.
+
+- **Join:** the zone is in heat mode, has a valid reading, no door/window is open, it is not in limp mode, a zone with real demand is heating, and its temperature is below the target. The hysteresis is not applied for the join.
+- **Leave:** by the normal rule. Radiator: target plus hysteresis (adaptive hysteresis included). The zone keeps heating to its own target even after the zone that started the boiler has stopped, and the boiler then runs for it alone.
+- **Real demand only:** a zone that joined by afterheat does not count as a reason to join. If its temperature falls more than the hysteresis below the target, it counts as real demand again.
+- **Check:** on every reading of the zone and once a minute while a zone with real demand is heating. A manual switch-off of an afterheat zone that is below its target is therefore switched on again within a minute while the boiler runs for another zone.
+- **Underfloor:** no effect on the thresholds (no hysteresis), only the one-minute check.
+- The existing piggyback heating at the moment the boiler starts applies to all zones. It also runs when a zone with real demand starts while the boiler runs only for afterheat zones, so zones without the option are not left out.
+
 ### Manual Override Detection
 
 **Event-Based Monitoring:**
@@ -175,6 +186,7 @@ While neither the zone sensor nor a backup sensor can be trusted, the zone heats
 | `outdoor_source` | `live`, `backup`, `estimate` or `none` while limp mode is active. |
 | `relay_fault` | Relays whose last command failed and is being retried. |
 | `relay_unavailable` | Relays that are currently `unavailable`/`unknown`. |
+| `reason` | Why the zone is (not) heating, as `{code, ...}` (see [Overview entity](#overview-entity)). Language-neutral, the dashboard translates it. |
 
 The attributes are the authoritative state. For automations (for example a phone notification while you are away) use `sensor_source`, `limp_active` or the event **`smartheatzones_failsafe`**, which is fired on every change with `zone`, `state` (`backup`, `limp`, `recovered`, `relay_unavailable`, `relay_recovered`), `cause`, a per-integration overview of the sensors (`groups`: several lost sensors in one integration point at a network or coordinator problem) and the unreachable relays. Events are transition hints only.
 
@@ -184,3 +196,29 @@ The zone also shows a persistent notification in Home Assistant (one per cause, 
 
 - Changing the common settings reloads all zones. Changing the **boiler switch** is the exception: it is registered once per Home Assistant run and needs a restart (a warning is logged).
 - A relay that stays ON while Home Assistant or the wifi is down cannot be switched off by software. Use the device's own protection where it exists (for example the safe default state or an auto-off timer on the relay).
+
+## Overview entity
+
+`sensor.smartheatzones_overview` describes the whole heating system in one entity. It is created together with the common settings and is the data source of the GlowStat heating card (also usable by your own cards and automations).
+
+- **State:** `on` while the boiler runs, otherwise `off`. Everything else is in the attributes.
+- **Refresh:** within about a second after a zone or the boiler changes, and once a minute. A reading that changes nothing in a zone's decision is visible after the next one minute check at the latest.
+- **Contract:** `schema: 1`. New fields may be added in a compatible way; a changed meaning raises the schema number.
+
+| Attribute | Content |
+|-----------|---------|
+| `schema`, `updated` | Contract version and the time of the last build (ISO). |
+| `boiler.entity` | The boiler switch. |
+| `boiler.running`, `boiler.since` | Whether a zone holds the boiler, and since when (ISO). |
+| `boiler.held_by`, `boiler.afterheat_zones` | Zones with real demand / zones that only joined by [afterheat](#afterheat). |
+| `boiler.starts_today`, `boiler.runtime_today_s`, `boiler.afterheat_joins_today` | Counters since local midnight (see below). |
+| `boiler.counters_since` | When counting started (ISO): local midnight, or later after a Home Assistant restart. |
+| `boiler.failed_action` | `turn_on` / `turn_off` while a boiler command failed and is being retried, else `null`. |
+| `zones[]` | Per zone (sorted by name): `name`, `entity_id`, `sensor_entity`, `heating_mode`, `hvac_mode`, `hvac_action`, `preset`, `current`, `target`, `adjusted_target`, `hysteresis`, `on_below`, `off_above`, `sensor_source`, `sensor_fault`, `limp`, `next_change`, `afterheat`, `joined`, `relay_unavailable`, `relay_fault`, `reason`. A value that is not known is `null`, a key is never missing. |
+| `health.groups` | Per integration of the zone sensors: `{total, bad}` (for example 3 of 5 silent Zigbee sensors point at a network problem). |
+
+`on_below` and `off_above` are the thresholds the control really uses (adjusted target minus/plus the effective hysteresis). `limp` is `{active, on_min, effective_on_min, period_min, next_in_min}`; `next_in_min` is `0` while the limp cycle is on and `null` without a cycle (for example when the outdoor cut-off stops it). `next_change` is `{at, in_min, temp, label}` in preset `auto` with a schedule of at least two periods, else `null`. The schedule control applies a change up to 15 minutes after `next_change.at`.
+
+**Reason codes** (`reason.code`): `needs_heat` (colder than the lower threshold), `holding` (heating, above the target, until `off_above`), `afterheat` (joined a running boiler), `in_band` (idle inside the hysteresis band, with `on_below` and `target`), `target_reached` (idle at or above the target), `door_open`, `hvac_off`, `no_reading` (no usable sensor value), `overheat`, `limp_heating`, `limp_waiting` (with `next_in_min`).
+
+**Counters** are kept in memory and reset at local midnight; a Home Assistant restart resets them too, which is why `counters_since` is published. A start is counted when the first zone asks for the boiler, the runtime is the time with at least one zone holding it, and an afterheat join is counted each time a zone joins that way.

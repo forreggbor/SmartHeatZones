@@ -2,6 +2,38 @@
 
 This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
 
+## Version 1.14.0 (2026-11-23) – Feature Release
+
+| Category | Description |
+|----------|-------------|
+| Added    | Overview entity with the state of the boiler and all zones in one place (`sensor.smartheatzones_overview`) |
+| Added    | Daily boiler counters: starts, runtime and afterheat joins |
+| Added    | Every zone explains why it is heating or not (`reason` attribute) |
+| Added    | The overview shows the next scheduled temperature change of each zone |
+| Added    | The overview shows how many of the zone sensors are silent, per integration |
+| Added    | The overview shows when a boiler command has failed |
+
+### Added
+
+- **Overview entity.** A new entity, `sensor.smartheatzones_overview`, is created together with the common settings. It is on while the boiler runs and carries the whole picture: the boiler, every zone, and the health of the sensors. It is made for the new GlowStat heating card (version 0.5.0 or newer), and can be used by your own cards and automations as well (closes #27).
+- **Boiler counters.** Today's number of boiler starts, the runtime and the number of zones that joined by afterheat. They start again at midnight and after a Home Assistant restart; the overview says since when it has been counting.
+- **Reason for every zone.** Each zone says why it is heating or idle, for example "idle, heats below 20.5", "door open", "no temperature reading" or "emergency cycle, next heating in 12 minutes". The reason is a code that the dashboard translates.
+- **Next scheduled change.** For zones on the schedule, the overview shows the next temperature change with its time. The schedule can apply a change up to 15 minutes after that time.
+- **Sensor network health.** The overview counts, per integration, how many zone sensors are silent, so a network problem is easy to see.
+- **Failed boiler command.** While a boiler switch command has failed and is being retried, the overview shows it.
+
+## Version 1.13.0 (2026-11-21) – Feature Release
+
+| Category | Description |
+|----------|-------------|
+| Added    | Afterheat: a zone can join a boiler that already runs for another zone, so the boiler starts less often |
+| Added    | Zones without Afterheat are not left out when real demand starts on a boiler that only runs for afterheat zones |
+
+### Added
+
+- **Afterheat.** A radiator zone with the new **Afterheat** option (off by default) switches on as soon as it is below its target temperature while the boiler already runs because another zone needs heat. It switches off by the usual hysteresis rule, and keeps heating to its own target even if the zone that started the boiler has stopped. Only a zone with real demand counts as the reason, so two afterheat zones never keep the boiler running for each other. Fewer boiler starts, same comfort (closes #25).
+- **Fair start for all zones.** When a zone with real demand starts while the boiler only runs for zones that joined by afterheat, the other zones that are below their target are switched on too, just as when the boiler starts from standby. A zone that joined by afterheat also keeps this status after its settings are reloaded.
+
 ## Version 1.12.1 (2026-11-21) – Maintenance Release
 
 | Category | Description |

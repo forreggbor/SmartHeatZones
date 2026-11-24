@@ -92,6 +92,12 @@ Each zone options screen shows:
 - Raise it only for a sensor that reports rarely. A Zigbee sensor usually reports at least every one or two hours, check its real reporting interval before you raise the limit
 - Details: [Fail-safe and error handling](advanced-features.md#fail-safe-and-error-handling)
 
+**Afterheat** (optional, off by default)
+- If the boiler already runs for another zone, this zone also switches on as soon as it is below its target temperature, and switches off by the normal hysteresis rule. This means fewer boiler starts
+- Only a zone with real demand counts as the reason: a zone that joined by afterheat does not pull further afterheat zones in
+- Radiator zones only; an underfloor zone has no hysteresis band and already heats below its target
+- Details: [Afterheat](advanced-features.md#afterheat)
+
 **Backup Temperature Sensor** (optional) and **Backup Sensor Correction** (°C, default 0)
 - Used only while the zone sensor is lost; control continues normally on its reading plus the correction
 - Use a negative correction for a sensor that reads too high (for example one mounted on a radiator)

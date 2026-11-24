@@ -67,7 +67,10 @@ from datetime import timedelta
 DOMAIN = "smartheatzones"
 LOG_PREFIX = "[SmartHeatZones]"
 PLATFORMS = ["climate"]
-INTEGRATION_VERSION = "1.12.1"  # Integration version displayed in UI
+PLATFORMS_COMMON = ["sensor"]  # platforms of the common settings entry (the overview entity)
+OVERVIEW_SCHEMA = 1  # version of the overview entity's attribute contract
+OVERVIEW_REFRESH_INTERVAL = timedelta(seconds=60)
+INTEGRATION_VERSION = "1.14.0"  # Integration version displayed in UI
 
 # --- Adattároló kulcsok ---------------------------------------------------------
 
@@ -188,6 +191,10 @@ CONF_SENSOR_STALE_HOURS = "sensor_stale_hours"
 DEFAULT_SENSOR_STALE_HOURS = 2.0
 MIN_SENSOR_STALE_HOURS = 0.5
 MAX_SENSOR_STALE_HOURS = 24.0
+
+# Afterheat (v1.13.0): a zone with this option joins a boiler that already runs for another zone
+CONF_AFTERHEAT = "afterheat"
+DEFAULT_AFTERHEAT = False
 SENSOR_BAD_STATES = ("unavailable", "unknown", "none")
 SENSOR_SOURCE_PRIMARY = "primary"  # the zone runs on its own sensor
 SENSOR_SOURCE_BACKUP = "backup"  # the zone runs on its backup sensor

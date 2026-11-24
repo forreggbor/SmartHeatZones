@@ -7,6 +7,7 @@
 - **Climate card** (`custom:glowstat-climate-card`) for a zone: target temperature with `+` / `-`, the current temperature, the state (heating or idle) and the preset buttons. The glow follows what the zone does and pulses while it is heating.
 - **Thermometer card** (`custom:glowstat-thermometer-card`) for the zone sensor: temperature, humidity, battery, a history graph and a trend arrow.
 - The preset temperatures (comfort, eco, away) under the preset buttons come from the zone's `preset_temperatures` attribute, so they follow the integration. This needs SmartHeatZones 1.10.0 or newer and GlowStat 0.3.0 or newer.
+- **Heating card** (`custom:glowstat-heating-card`) for the whole house, from `sensor.smartheatzones_overview`: the boiler with today's counters, every zone with its distance to the target and the reason for its state, 24 hour timelines, the sensor network health, the next scheduled change and quick actions ("all away", "all eco"). This needs SmartHeatZones 1.14.0 or newer and GlowStat 0.5.0 or newer.
 - Texts are available in English and Hungarian, and both cards have an editor in the dashboard, no YAML is needed.
 
 [![Open GlowStat in the Home Assistant Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=forreggbor&repository=ha-GlowStat&category=plugin)
@@ -15,6 +16,7 @@
 1. Install GlowStat from the Marketplace (**Settings > Marketplace**, search for "GlowStat", or use the button above) and reload the browser.
 2. In the dashboard editor add a card, search for "GlowStat", pick the climate card and select the zone's climate entity. The preset buttons are found automatically.
 3. Optionally add the thermometer card for the zone sensor next to it.
+4. For the whole house add the heating card and select `sensor.smartheatzones_overview`.
 
 The same in YAML, for a zone with its temperature sensor:
 
