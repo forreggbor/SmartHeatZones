@@ -89,7 +89,6 @@ from .decision import decision_reason, next_schedule_change
 from .const import (
     DOMAIN,
     DATA_BOILER_MAIN,
-    DATA_ACTIVE_ZONES,
     DATA_COMMON_SETTINGS,
     CONF_SENSOR,
     CONF_ZONE_RELAYS,
@@ -412,6 +411,10 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                         self._outdoor_sample_changed,
                     )
                 )
+
+        # The boiler manager watches the boiler switch from the first zone on (recovery after an outage)
+        if self._boiler_entity:
+            await self._boiler.register_boiler(self._boiler_entity)
 
         # Event-based relay monitoring
         if self._relay_entities:

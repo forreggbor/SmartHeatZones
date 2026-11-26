@@ -4,9 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_mock_service
+from pytest_homeassistant_custom_component.common import async_fire_time_changed, async_mock_service
 
 from custom_components.smartheatzones.boiler_manager import BoilerManager
+from custom_components.smartheatzones.const import ORPHAN_ZONE_RELEASE_DELAY
 
 BOILER = "switch.boiler"
 
@@ -196,3 +197,97 @@ def test_the_overview_attributes_stay_out_of_the_recorder():
     from custom_components.smartheatzones.sensor import OverviewSensor
 
     assert {"zones", "boiler", "health", "updated"} <= OverviewSensor._unrecorded_attributes
+
+
+async def test_removed_zone_releases_the_boiler_after_the_delay(hass, boiler, freezer):
+    """Regression #26: a zone removed (or renamed) while heating must not hold the boiler."""
+    calls = async_mock_service(hass, "switch", "turn_off")
+    boiler.register_zone_entity("A", MagicMock())
+    await boiler.turn_on(BOILER, "A")
+
+    boiler.unregister_zone_entity("A")
+    assert boiler.get_active_zones() == ["A"]  # not at once: a reload re-registers the zone
+
+    freezer.tick(ORPHAN_ZONE_RELEASE_DELAY)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert boiler.get_active_zones() == []
+    assert len(calls) == 1
+
+
+async def test_reloaded_zone_keeps_the_boiler_running(hass, boiler, freezer):
+    calls = async_mock_service(hass, "switch", "turn_off")
+    boiler.register_zone_entity("A", MagicMock())
+    await boiler.turn_on(BOILER, "A")
+
+    boiler.unregister_zone_entity("A")
+    boiler.register_zone_entity("A", MagicMock())  # the reload brings the zone back
+
+    freezer.tick(ORPHAN_ZONE_RELEASE_DELAY)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert boiler.get_active_zones() == ["A"]
+    assert calls == []
+
+
+async def test_a_zone_registering_during_piggyback_does_not_break_the_check(boiler):
+    """Regression #24: a zone set up while the piggyback check awaits must not abort the loop."""
+    async def setup_another_zone():
+        boiler.register_zone_entity("D", MagicMock(check_piggyback_heating=AsyncMock()))
+
+    first = MagicMock(check_piggyback_heating=AsyncMock(side_effect=setup_another_zone))
+    boiler.register_zone_entity("A", MagicMock())
+    boiler.register_zone_entity("B", first)
+
+    await boiler.turn_on(BOILER, "A")
+    first.check_piggyback_heating.assert_awaited_once()
+
+
+async def test_a_zone_removed_during_piggyback_is_skipped(boiler):
+    gone = MagicMock(check_piggyback_heating=AsyncMock())
+
+    async def remove_zone():
+        boiler.unregister_zone_entity("C")
+
+    boiler.register_zone_entity("A", MagicMock())
+    boiler.register_zone_entity("B", MagicMock(check_piggyback_heating=AsyncMock(side_effect=remove_zone)))
+    boiler.register_zone_entity("C", gone)
+
+    await boiler.turn_on(BOILER, "A")
+    gone.check_piggyback_heating.assert_not_awaited()
+
+
+async def test_boiler_back_from_unavailable_is_set_to_the_wanted_state(hass, boiler):
+    """Regression #23: a boiler switch that rebooted off while zones heat is switched on again."""
+    on = async_mock_service(hass, "switch", "turn_on")
+    hass.states.async_set(BOILER, "off")
+    await boiler.turn_on(BOILER, "A")
+    hass.states.async_set(BOILER, "on")
+    assert len(on) == 1
+
+    hass.states.async_set(BOILER, "unavailable")  # wifi outage / reboot
+    await hass.async_block_till_done()
+    hass.states.async_set(BOILER, "off")  # back, but off
+    await hass.async_block_till_done()
+    assert len(on) == 2
+
+
+async def test_boiler_back_on_without_active_zones_is_switched_off(hass, boiler):
+    off = async_mock_service(hass, "switch", "turn_off")
+    await boiler.register_boiler(BOILER)
+    hass.states.async_set(BOILER, "unavailable")
+    await hass.async_block_till_done()
+    hass.states.async_set(BOILER, "on")
+    await hass.async_block_till_done()
+    assert len(off) == 1
+
+
+async def test_a_manual_boiler_switch_is_not_overridden(hass, boiler):
+    on = async_mock_service(hass, "switch", "turn_on")
+    hass.states.async_set(BOILER, "off")
+    await boiler.turn_on(BOILER, "A")
+    hass.states.async_set(BOILER, "on")
+    await hass.async_block_till_done()
+    hass.states.async_set(BOILER, "off")  # switched off by hand, no outage in between
+    await hass.async_block_till_done()
+    assert len(on) == 1

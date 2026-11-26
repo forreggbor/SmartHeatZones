@@ -75,7 +75,6 @@ INTEGRATION_VERSION = "1.14.0"  # Integration version displayed in UI
 # --- Adattároló kulcsok ---------------------------------------------------------
 
 DATA_ENTRIES = "entries"
-DATA_ACTIVE_ZONES = "active_zones"
 DATA_BOILER_MAIN = "boiler_manager"
 DATA_OUTDOOR_TEMP = "outdoor_temp_sensor"
 DATA_COMMON_SETTINGS = "common_settings"  # NEW v1.6.0: Common settings entry
@@ -203,6 +202,7 @@ SENSOR_UNAVAILABLE_GRACE = timedelta(minutes=10)  # tolerated length of "unavail
 EVENT_FAILSAFE = "smartheatzones_failsafe"  # fired on every fail-safe state change of a zone
 RELAY_UNAVAILABLE_NOTICE_AFTER = timedelta(minutes=15)  # unreachable relay while heating is wanted -> notify
 WATCHDOG_INTERVAL = timedelta(minutes=1)  # fail-safe check and retry of failed relay commands
+ORPHAN_ZONE_RELEASE_DELAY = timedelta(seconds=30)  # a removed zone not back by then (deleted/renamed) releases the boiler
 ERR_OUTDOOR_SENSOR_UNAVAILABLE = "Outdoor temperature sensor unavailable"
 
 # Limp mode: open-loop heating cycle while no temperature sensor can be trusted.

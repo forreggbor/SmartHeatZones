@@ -11,7 +11,6 @@ from pytest_homeassistant_custom_component.common import (
     mock_restore_cache,
 )
 
-from custom_components.smartheatzones import async_remove_entry
 from custom_components.smartheatzones.const import (
     CONF_BOILER_MAIN,
     CONF_HYSTERESIS,
@@ -23,9 +22,9 @@ from custom_components.smartheatzones.const import (
     CONF_SENSOR,
     CONF_SENSOR_STALE_HOURS,
     CONF_ZONE_RELAYS,
-    DATA_ACTIVE_ZONES,
     DATA_BOILER_MAIN,
     DOMAIN,
+    ORPHAN_ZONE_RELEASE_DELAY,
 )
 
 SENSOR = "sensor.living_temp"
@@ -214,13 +213,6 @@ async def test_invalid_stored_values_do_not_break_the_entity(hass):
     assert attrs["temperature"] == 21.0
 
 
-async def test_removing_a_zone_does_not_touch_a_zone_with_a_similar_name(hass):
-    hass.data.setdefault(DOMAIN, {})[DATA_ACTIVE_ZONES] = {"Bath", "Bathroom"}
-    entry = MockConfigEntry(domain=DOMAIN, title="Bath", data={})
-    await async_remove_entry(hass, entry)
-    assert hass.data[DOMAIN][DATA_ACTIVE_ZONES] == {"Bathroom"}
-
-
 async def test_the_silence_limit_is_a_zone_setting(hass, freezer):
     """A short limit trips early, a long one does not; both reflect the configured value."""
     on = async_mock_service(hass, "switch", "turn_on")
@@ -300,3 +292,45 @@ async def test_a_reload_leaves_no_old_listeners_behind(hass):
     hass.states.async_set(SENSOR, "23.0")  # warm enough: exactly one switch-off, not one per old entity
     await hass.async_block_till_done()
     assert len(commands(off, RELAY)) == 1
+
+
+async def test_deleting_a_heating_zone_switches_the_boiler_off(hass, freezer):
+    """Regression #26: the deleted zone's name must not keep the boiler running until a restart."""
+    async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    zone = await setup_zone(hass, temp="19.0")
+    boiler = hass.data[DOMAIN][DATA_BOILER_MAIN]
+    assert boiler.get_active_zones() == ["Living"]
+
+    assert await hass.config_entries.async_remove(zone.entry_id)
+    await hass.async_block_till_done()
+    await advance(hass, freezer, seconds=ORPHAN_ZONE_RELEASE_DELAY.total_seconds())
+    assert boiler.get_active_zones() == []
+    assert len(commands(off, BOILER)) == 1
+
+
+async def test_reloading_a_heating_zone_keeps_the_boiler_on(hass, freezer):
+    async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    zone = await setup_zone(hass, temp="19.0")
+    hass.states.async_set(RELAY, "on")  # the relay was switched on by the zone
+    boiler = hass.data[DOMAIN][DATA_BOILER_MAIN]
+
+    assert await hass.config_entries.async_reload(zone.entry_id)
+    await hass.async_block_till_done()
+    await advance(hass, freezer, seconds=ORPHAN_ZONE_RELEASE_DELAY.total_seconds())
+    assert boiler.get_active_zones() == ["Living"]
+    assert commands(off, BOILER) == []
+
+
+async def test_a_zone_watches_the_boiler_switch_from_setup(hass):
+    """Regression #23: the boiler is followed even before any zone has asked for heat."""
+    async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="23.0")  # warm: the zone does not heat
+
+    hass.states.async_set(BOILER, "unavailable")
+    await hass.async_block_till_done()
+    hass.states.async_set(BOILER, "on")  # came back on after a reboot
+    await hass.async_block_till_done()
+    assert len(commands(off, BOILER)) == 1

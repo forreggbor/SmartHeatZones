@@ -53,7 +53,6 @@ from .const import (
     PLATFORMS,
     PLATFORMS_COMMON,
     DATA_BOILER_MAIN,
-    DATA_ACTIVE_ZONES,
     DATA_ENTRIES,
     DATA_COMMON_SETTINGS,
     CONF_IS_COMMON_SETTINGS,
@@ -135,9 +134,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     else:
         _LOGGER.debug("%s Reusing existing BoilerManager instance", LOG_PREFIX)
 
-    # Active zones collection
-    hass.data[DOMAIN].setdefault(DATA_ACTIVE_ZONES, set())
-
     # Entry registry
     hass.data[DOMAIN].setdefault(DATA_ENTRIES, {})
     hass.data[DOMAIN][DATA_ENTRIES][entry_id] = entry
@@ -210,10 +206,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         entries.pop(entry_id, None)
         _LOGGER.debug("%s Removed zone entry from registry: %s", LOG_PREFIX, entry.title)
 
-    active_zones = domain_data.get(DATA_ACTIVE_ZONES, set())
-    if not active_zones:
-        _LOGGER.debug("%s No active zones remain.", LOG_PREFIX)
-
     _LOGGER.info("%s %s – zone entry unloaded", LOG_PREFIX, entry.title)
     return unload_ok
 
@@ -243,8 +235,5 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
         else:
             if DATA_ENTRIES in domain_data:
                 domain_data[DATA_ENTRIES].pop(entry.entry_id, None)
-            if DATA_ACTIVE_ZONES in domain_data:
-                zones = domain_data[DATA_ACTIVE_ZONES]
-                domain_data[DATA_ACTIVE_ZONES] = {z for z in zones if z != entry.title}
     except Exception as e:
         _LOGGER.warning("%s Cleanup warning: %s", LOG_PREFIX, e)

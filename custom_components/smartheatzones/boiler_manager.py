@@ -22,14 +22,16 @@ NEW in v1.8.1:
 import logging
 from datetime import datetime, time
 from typing import Callable, Optional, TYPE_CHECKING
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HassJob, HomeAssistant, callback
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
     DATA_BOILER_MAIN,
-    DATA_ACTIVE_ZONES,
     LOG_PREFIX,
+    ORPHAN_ZONE_RELEASE_DELAY,
+    SENSOR_BAD_STATES,
 )
 
 if TYPE_CHECKING:
@@ -52,9 +54,11 @@ class BoilerManager:
     def __init__(self, hass: HomeAssistant):
         self.hass = hass
         self._boiler_entity_id: Optional[str] = None
+        self._boiler_unsub: Optional[Callable[[], None]] = None  # boiler switch state listener
         self._active_zones: set[str] = set()
         self._afterheat_zones: set[str] = set()  # active zones that only joined by afterheat (no real demand)
         self._zone_entities: dict[str, "SmartHeatZoneClimate"] = {}
+        self._orphan_checks: dict[str, Callable[[], None]] = {}  # zone name -> cancel of its pending release
         self._failed_action: Optional[str] = None  # boiler command that failed and is retried
         self._mismatch_warned = False  # a differing boiler entity was already reported
         # Daily counters (in memory only): reset at local midnight, see stats()
@@ -73,7 +77,10 @@ class BoilerManager:
     # --------------------------------------------------------------------------
 
     def register_zone_entity(self, zone_name: str, entity: "SmartHeatZoneClimate"):
-        """Register a zone climate entity for piggyback heating."""
+        """Register a zone climate entity for piggyback heating (a reloaded zone cancels its pending release)."""
+        cancel = self._orphan_checks.pop(zone_name, None)
+        if cancel:
+            cancel()
         self._zone_entities[zone_name] = entity
         _LOGGER.debug("%s Zone entity registered: %s", LOG_PREFIX, zone_name)
         self._notify()
@@ -83,23 +90,90 @@ class BoilerManager:
         return list(self._zone_entities.values())
 
     def unregister_zone_entity(self, zone_name: str):
-        """Unregister a zone climate entity."""
+        """
+        Unregister a zone climate entity.
+
+        A zone that still holds the boiler keeps it for ORPHAN_ZONE_RELEASE_DELAY: a reload registers it
+        again (the boiler keeps running), a deleted or renamed zone never does and then releases it.
+        """
         if zone_name in self._zone_entities:
             del self._zone_entities[zone_name]
             _LOGGER.debug("%s Zone entity unregistered: %s", LOG_PREFIX, zone_name)
             self._notify()
+        if zone_name in self._active_zones and zone_name not in self._orphan_checks:
+            self._orphan_checks[zone_name] = async_call_later(
+                self.hass, ORPHAN_ZONE_RELEASE_DELAY,
+                HassJob(self._make_orphan_release(zone_name), cancel_on_shutdown=True),
+            )
+
+    def _make_orphan_release(self, zone_name: str) -> Callable:
+        """The delayed release of a zone that was removed while it held the boiler."""
+
+        @callback
+        def release(_now) -> None:
+            self._orphan_checks.pop(zone_name, None)
+            if zone_name in self._zone_entities or zone_name not in self._active_zones:
+                return
+            _LOGGER.warning(
+                "%s Zone '%s' was removed while heating - releasing its boiler demand", LOG_PREFIX, zone_name
+            )
+            self.hass.async_create_task(self._release_orphan(zone_name))
+
+        return release
+
+    async def _release_orphan(self, zone_name: str) -> None:
+        """Release the boiler demand of a removed zone; never raises."""
+        try:
+            await self.turn_off(None, zone_name)
+        except Exception:
+            _LOGGER.exception("%s Releasing the boiler demand of removed zone '%s' FAILED", LOG_PREFIX, zone_name)
 
     async def register_boiler(self, entity_id: str):
-        """Kazán főkapcsoló regisztrálása."""
-        if self._boiler_entity_id and self._boiler_entity_id != entity_id:
-            _LOGGER.warning(
-                "%s Boiler entity changed from %s → %s",
-                LOG_PREFIX,
-                self._boiler_entity_id,
-                entity_id,
-            )
+        """
+        Register the boiler switch and watch its state; the first registration of a run wins.
+
+        A different switch later is only warned about in turn_on() (a changed boiler needs a restart).
+        """
+        if self._boiler_entity_id:
+            return
         self._boiler_entity_id = entity_id
+        self._boiler_unsub = async_track_state_change_event(self.hass, [entity_id], self._boiler_state_changed)
         _LOGGER.info("%s Boiler entity registered: %s", LOG_PREFIX, entity_id)
+
+    async def _boiler_state_changed(self, event: Event) -> None:
+        """
+        The boiler switch changed state.
+
+        A switch that goes unavailable cannot be commanded (Home Assistant skips it without an error),
+        so when it is back (e.g. after a reboot) it is set to the wanted state: on while any zone holds
+        the boiler, off otherwise. A change between two readable states (ours, or a manual switch) is
+        left alone, like before.
+        """
+        try:
+            new_state = event.data.get("new_state")
+            old_state = event.data.get("old_state")
+            if new_state is None:
+                return
+            if new_state.state in SENSOR_BAD_STATES:
+                if old_state is None or old_state.state not in SENSOR_BAD_STATES:
+                    _LOGGER.warning(
+                        "%s Boiler switch %s is %s - it is set to the wanted state when it is back",
+                        LOG_PREFIX, self._boiler_entity_id, new_state.state
+                    )
+                return
+            if old_state is not None and old_state.state not in SENSOR_BAD_STATES:
+                return
+
+            wanted_on = bool(self._active_zones)
+            _LOGGER.warning(
+                "%s Boiler switch %s is back (%s) | wanted %s | active zones: %s",
+                LOG_PREFIX, self._boiler_entity_id, new_state.state, "ON" if wanted_on else "OFF",
+                sorted(self._active_zones)
+            )
+            if (new_state.state == "on") != wanted_on:
+                await self._call_boiler_service("turn_on" if wanted_on else "turn_off")
+        except Exception:
+            _LOGGER.exception("%s Handling a boiler switch state change FAILED", LOG_PREFIX)
 
     async def turn_on(self, entity_id: Optional[str], zone: str, afterheat: bool = False):
         """Kazán bekapcsolása zónából. Afterheat: the zone only joined a running boiler, it is not real demand."""
@@ -169,10 +243,11 @@ class BoilerManager:
             LOG_PREFIX, initiating_zone
         )
 
-        for zone_name, zone_entity in self._zone_entities.items():
-            if zone_name != initiating_zone:
-                # Trigger piggyback check in other zones
-                await zone_entity.check_piggyback_heating()
+        # A snapshot: zones may be set up or removed while a check awaits
+        for zone_name, zone_entity in list(self._zone_entities.items()):
+            if zone_name == initiating_zone or self._zone_entities.get(zone_name) is not zone_entity:
+                continue  # the initiator itself, or a zone removed/reloaded meanwhile
+            await zone_entity.check_piggyback_heating()
 
     # --------------------------------------------------------------------------
     # Segédfüggvények

@@ -2,6 +2,26 @@
 
 This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
 
+## Version 1.14.1 (2026-11-26) – Maintenance Release
+
+| Category | Description |
+|----------|-------------|
+| Fixed    | A zone no longer switches to its backup sensor while its own sensor works but the temperature stays the same |
+| Fixed    | A steady outdoor temperature is no longer treated as missing in limp mode |
+| Fixed    | The overview and the sensor-loss notification no longer count a working sensor with a steady value as silent |
+| Fixed    | Deleting or renaming a zone while it heats no longer keeps the boiler running until a restart |
+| Fixed    | Setting up or removing a zone while the boiler starts no longer stops the other zones from joining |
+| Fixed    | A boiler switch that comes back after a wifi outage or reboot is set to the right state again |
+
+### Fixed
+
+- **False switch to the backup sensor.** Home Assistant does not record a Zigbee2MQTT temperature again when it has not changed. When a room's temperature stayed the same for longer than the silence limit (2 hours by default), the zone treated its working sensor as silent and switched to the backup sensor. A sensor now only counts as silent when its whole device has gone quiet (no temperature, humidity, signal or battery report). A dead battery is still detected (closes #28).
+- **Steady outdoor temperature.** For the same reason, a steady outdoor temperature was treated as missing after 3 hours in limp mode. The outdoor sensor is now checked the same way.
+- **Silent sensor count.** The overview and the sensor-loss notification use the same check, so a working sensor with a steady value is no longer counted as silent.
+- **Boiler kept running by a removed zone.** When a zone was deleted or renamed while it was heating, the boiler kept counting it as a heating zone and did not switch off until Home Assistant was restarted. A removed zone now releases the boiler after 30 seconds. Saving a zone's settings reloads it without switching the boiler off and on (closes #26).
+- **Zones left out at boiler start.** When the boiler starts, every other zone that is below its target switches on too. If a zone was set up or removed at that moment, this check stopped with an error and the remaining zones were left out until their next sensor update. The check now finishes for all zones and skips a zone that is no longer there (closes #24).
+- **Boiler switch after an outage.** While the boiler switch is unreachable (wifi outage, reboot), it cannot be switched, and Home Assistant gives no error for it. If it came back off while zones were heating, the boiler stayed off until every zone was idle. SmartHeatZones now watches the boiler switch: when it is back, it is switched on if any zone needs heat and off if none does. Switching the boiler by hand is still not overridden (closes #23).
+
 ## Version 1.14.0 (2026-11-23) – Feature Release
 
 | Category | Description |

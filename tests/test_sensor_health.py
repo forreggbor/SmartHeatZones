@@ -1,8 +1,10 @@
 """Shared sensor-health helpers: sensor problems, outdoor chain, outdoor estimate, groups."""
 from datetime import timedelta
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.smartheatzones.const import (
     LIMP_OUTDOOR_MAX_AGE,
@@ -62,6 +64,52 @@ async def test_sensor_problem_stale_uses_last_reported(hass):
     fresh = hass.states.get(SENSOR)
     assert sensor_problem(hass, SENSOR, STALE, None, fresh.last_reported + timedelta(minutes=30)) == (None, None)
     assert later > state.last_updated
+
+
+def _register_device_sensors(hass, *object_ids):
+    """Register sensors that belong to one device (as an MQTT/Zigbee2MQTT device would expose them)."""
+    entry = MockConfigEntry(domain="mqtt")
+    entry.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("mqtt", "zigbee2mqtt_0x1234")}
+    )
+    registry = er.async_get(hass)
+    return [
+        registry.async_get_or_create(
+            "sensor", "mqtt", object_id, config_entry=entry, device_id=device.id, suggested_object_id=object_id
+        ).entity_id
+        for object_id in object_ids
+    ]
+
+
+async def test_sensor_problem_unchanged_value_with_a_reporting_device_is_not_stale(hass, freezer):
+    """Regression #28: MQTT does not rewrite an unchanged temperature, but the device's other sensors report."""
+    temp, humidity = _register_device_sensors(hass, "room_temperature", "room_humidity")
+    hass.states.async_set(temp, "23.3")
+    hass.states.async_set(humidity, "54")
+    freezer.tick(STALE - timedelta(minutes=5))
+    hass.states.async_set(humidity, "55")  # the device is alive, the temperature did not change
+    freezer.tick(timedelta(minutes=10))
+    assert sensor_problem(hass, temp, STALE, None, dt_util.utcnow()) == (None, None)
+    groups = group_overview(hass, [temp], STALE, dt_util.utcnow())
+    assert [group["bad"] for group in groups.values()] == [0]
+
+
+async def test_sensor_problem_silent_device_is_stale(hass, freezer):
+    """A dead battery silences every sensor of the device: still detected."""
+    temp, humidity = _register_device_sensors(hass, "room_temperature", "room_humidity")
+    hass.states.async_set(temp, "23.3")
+    hass.states.async_set(humidity, "54")
+    freezer.tick(STALE)
+    assert sensor_problem(hass, temp, STALE, None, dt_util.utcnow()) == ("sensor_stale", None)
+
+
+async def test_sensor_problem_unavailable_sibling_does_not_keep_the_sensor_alive(hass, freezer):
+    temp, humidity = _register_device_sensors(hass, "room_temperature", "room_humidity")
+    hass.states.async_set(temp, "23.3")
+    freezer.tick(STALE)
+    hass.states.async_set(humidity, "unavailable")
+    assert sensor_problem(hass, temp, STALE, None, dt_util.utcnow()) == ("sensor_stale", None)
 
 
 async def test_sensor_problem_without_an_entity_is_fine(hass):

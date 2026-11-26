@@ -47,6 +47,28 @@ def _last_seen(state: State) -> datetime:
     return max(state.last_updated, getattr(state, "last_reported", state.last_updated))
 
 
+def _device_last_seen(hass: HomeAssistant, entity_id: str, state: State) -> datetime:
+    """
+    When the sensor or any other readable sensor of the same device last reported anything.
+
+    An MQTT entity (e.g. Zigbee2MQTT) does not rewrite an unchanged value, so a stable temperature
+    never advances last_reported although the device keeps reporting (humidity, link quality, ...).
+    A dead battery or a lost device silences all of its sensors, so that is still detected.
+    """
+    seen = _last_seen(state)
+    registry = er.async_get(hass)
+    entry = registry.async_get(entity_id)
+    if entry is None or entry.device_id is None:
+        return seen
+    for sibling in er.async_entries_for_device(registry, entry.device_id):
+        if sibling.domain != "sensor" or sibling.entity_id == entity_id:
+            continue
+        sibling_state = hass.states.get(sibling.entity_id)
+        if sibling_state is not None and sibling_state.state not in SENSOR_BAD_STATES:
+            seen = max(seen, _last_seen(sibling_state))
+    return seen
+
+
 def _readable_number(state: Optional[State]) -> Optional[float]:
     """The numeric value of a sensor state, or None when it is missing, unavailable or not a number."""
     if state is None or state.state in SENSOR_BAD_STATES:
@@ -68,8 +90,9 @@ def sensor_problem(
     Why a temperature sensor cannot be trusted right now, or None when it is fine.
 
     - "sensor_unavailable": no readable value for longer than SENSOR_UNAVAILABLE_GRACE
-    - "sensor_stale": a numeric sensor has not reported anything for the silence limit
-      (a dead battery usually leaves the last value in place instead of going unavailable)
+    - "sensor_stale": neither the sensor nor any other sensor of its device has reported anything for
+      the silence limit (a dead battery usually leaves the last value in place instead of going
+      unavailable)
 
     Returns (problem, new_bad_since). The caller stores bad_since: it is the start of the current
     "not readable" period and is reset as soon as a readable value is seen.
@@ -85,7 +108,7 @@ def sensor_problem(
             return "sensor_unavailable", bad_since
         return None, bad_since
 
-    if now - _last_seen(state) >= stale_timeout:
+    if now - _device_last_seen(hass, entity_id, state) >= stale_timeout:
         return "sensor_stale", None
     return None, None
 
@@ -146,7 +169,7 @@ def read_outdoor(hass: HomeAssistant, entity_id: Optional[str], now: datetime) -
     state = hass.states.get(entity_id)
     if state is None or state.state in SENSOR_BAD_STATES:
         return None
-    if now - _last_seen(state) > LIMP_OUTDOOR_MAX_AGE:
+    if now - _device_last_seen(hass, entity_id, state) > LIMP_OUTDOOR_MAX_AGE:
         return None
 
     if entity_id.split(".", 1)[0] == "weather":
@@ -210,7 +233,7 @@ def group_overview(
         group = groups.setdefault(key, {"total": 0, "bad": 0, "bad_entities": []})
         group["total"] += 1
         state = hass.states.get(entity_id)
-        if _readable_number(state) is None or now - _last_seen(state) >= stale_timeout:
+        if _readable_number(state) is None or now - _device_last_seen(hass, entity_id, state) >= stale_timeout:
             group["bad"] += 1
             group["bad_entities"].append(entity_id)
     return groups

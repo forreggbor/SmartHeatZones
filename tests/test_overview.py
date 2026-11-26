@@ -162,6 +162,7 @@ async def test_a_failing_build_makes_the_entity_unavailable_and_recovers(hass, f
 
 async def test_boiler_entity_comes_from_the_manager_when_registered(hass):
     await setup_zone(hass, temp="23.0")
+    boiler_of(hass)._boiler_entity_id = None  # the zone registered the configured boiler at setup
     await boiler_of(hass).register_boiler("switch.other_boiler")
 
     built = overview_module.build_overview(hass, boiler_of(hass), __import__("homeassistant.util.dt", fromlist=["x"]).utcnow())
