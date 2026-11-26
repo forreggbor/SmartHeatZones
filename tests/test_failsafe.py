@@ -13,6 +13,7 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.smartheatzones.const import (
     CONF_BOILER_MAIN,
+    CONF_HEATING_MODE,
     CONF_HYSTERESIS,
     CONF_IS_COMMON_SETTINGS,
     CONF_LIMP_ON,
@@ -334,3 +335,63 @@ async def test_a_zone_watches_the_boiler_switch_from_setup(hass):
     hass.states.async_set(BOILER, "on")  # came back on after a reboot
     await hass.async_block_till_done()
     assert len(commands(off, BOILER)) == 1
+
+
+async def test_the_overheat_limit_is_not_undone_by_the_same_reading(hass):
+    """Regression #29: with the limit below the target, a reading over the limit must keep heating off."""
+    on = async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(
+        hass, temp="19.0",
+        common_extra={CONF_OVERHEAT_PROTECTION: 20.5}, zone_extra={CONF_HEATING_MODE: "underfloor"},
+    )
+    assert len(commands(on, RELAY)) == 1
+
+    for reading in ("20.6", "20.7"):
+        hass.states.async_set(SENSOR, reading)
+        await hass.async_block_till_done()
+    assert len(commands(on, RELAY)) == 1  # never switched on again
+    assert len(commands(off, RELAY)) == 1
+    assert hass.states.get(CLIMATE).attributes["hvac_action"] == "idle"
+
+
+async def test_piggyback_does_not_start_a_zone_over_its_overheat_limit(hass):
+    on = async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="20.6", common_extra={CONF_OVERHEAT_PROTECTION: 20.5})  # below target 21
+
+    zone = hass.data[DOMAIN][DATA_BOILER_MAIN].get_zone_entities()[0]
+    await zone.check_piggyback_heating()  # another zone started the boiler
+    assert commands(on, RELAY) == []
+
+
+async def test_a_boiler_left_on_without_demand_is_switched_off_after_startup(hass, freezer):
+    """Regression #30: no zone holds the boiler, but its switch is on (restart during heating)."""
+    async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="23.0")  # warm zone, relay off
+    hass.states.async_set(BOILER, "on")
+    await hass.async_block_till_done()
+
+    await advance(hass, freezer, minutes=1)  # first watchdog run
+    assert len(commands(off, BOILER)) == 1
+
+
+async def test_the_startup_check_keeps_a_boiler_a_zone_needs(hass, freezer):
+    async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="19.0")  # cold zone: it holds the boiler
+    hass.states.async_set(BOILER, "on")
+    await advance(hass, freezer, minutes=1)
+    assert commands(off, BOILER) == []
+
+
+async def test_a_boiler_switched_on_by_hand_later_is_not_overridden(hass, freezer):
+    async_mock_service(hass, "switch", "turn_on")
+    off = async_mock_service(hass, "switch", "turn_off")
+    await setup_zone(hass, temp="23.0")
+    await advance(hass, freezer, minutes=1)  # the startup check found the boiler off
+
+    hass.states.async_set(BOILER, "on")  # switched on by hand
+    await advance(hass, freezer, minutes=2)
+    assert commands(off, BOILER) == []

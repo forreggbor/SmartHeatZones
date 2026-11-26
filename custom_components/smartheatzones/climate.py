@@ -1050,6 +1050,11 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
             _LOGGER.exception("%s [%s] Watchdog: retry of failed commands FAILED", LOG_PREFIX, self.name)
 
         try:
+            await self._boiler.check_startup_state()
+        except Exception:
+            _LOGGER.exception("%s [%s] Watchdog: startup boiler check FAILED", LOG_PREFIX, self.name)
+
+        try:
             if self._afterheat and not self._is_heating and self._boiler.has_real_demand():
                 await self._evaluate_heating()  # join a running boiler without waiting for the next reading
         except Exception:
@@ -1238,7 +1243,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         if not self._schedule or self._preset_mode != PRESET_AUTO:
             return
 
-        now = datetime.now().time()
+        now = dt_util.now().time()  # HA's time zone, like the limp cycle and the counters
         for block in self._schedule:
             try:
                 start_time = datetime.strptime(str(block["start"])[:5], "%H:%M").time()
@@ -1340,8 +1345,20 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
                 await self._set_heating(True, reason="Afterheat (boiler already running)", afterheat=True)
 
     async def _set_heating(self, enable: bool, reason: Optional[str] = None, afterheat: bool = False):
-        """Control relays and boiler."""
+        """
+        Control relays and boiler.
+
+        Heating is never switched on while the reading is at or over the overheat limit, whichever
+        decision asks for it (normal control, piggyback, afterheat), so a limit below the target
+        cannot be undone by the same reading. Limp mode has no reading and is not affected.
+        """
         if enable == self._is_heating:
+            return
+        if enable and self._current_temp is not None and self._current_temp >= self._overheat_temp:
+            _LOGGER.info(
+                "%s [%s] Heating ON blocked: %.2f°C >= overheat limit %.1f°C (%s)",
+                LOG_PREFIX, self.name, self._current_temp, self._overheat_temp, reason
+            )
             return
 
         self._is_heating = enable
@@ -1510,7 +1527,7 @@ class SmartHeatZoneClimate(ClimateEntity, RestoreEntity):
         hysteresis = self._get_effective_hysteresis()
         next_change = None
         if self._preset_mode == PRESET_AUTO:
-            next_change = next_schedule_change(self._schedule, datetime.now())
+            next_change = next_schedule_change(self._schedule, dt_util.now())
         return {
             "name": self.name,
             "entity_id": self.entity_id,

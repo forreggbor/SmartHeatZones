@@ -1,4 +1,6 @@
 """Zone snapshot for the overview, the decision reason and the next scheduled change."""
+from datetime import datetime
+
 import pytest
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_mock_service
@@ -148,7 +150,7 @@ async def test_limp_with_outdoor_cutoff_has_no_countdown(hass, freezer):
 
 
 async def test_next_change_in_preset_auto_only_in_the_snapshot(hass, freezer):
-    freezer.move_to("2026-11-23 12:00:00")
+    freezer.move_to(datetime(2026, 11, 23, 12, 0, tzinfo=dt_util.get_default_time_zone()))  # HA local noon
     await setup_zone(hass, temp="20.9", zone_extra={CONF_SCHEDULE: SCHEDULE})
 
     assert snap(hass)["next_change"] == {"at": "17:00", "in_min": 300, "temp": 22.5, "label": "Evening"}
@@ -183,3 +185,19 @@ async def test_a_failing_reason_does_not_break_the_state(hass, monkeypatch, capl
 
     assert hass.states.get(CLIMATE).attributes["reason"] is None
     assert "boom" in caplog.text
+
+
+SCHEDULE_DAY_NIGHT = [
+    {"start": "06:00", "end": "22:00", "temp": 22.0, "label": "Day"},
+    {"start": "22:00", "end": "06:00", "temp": 18.0, "label": "Night"},
+]
+
+
+async def test_the_schedule_follows_the_home_assistant_time_zone(hass, freezer):
+    """Regression #31: the period is picked by HA's time zone, not by the process (container) clock."""
+    await hass.config.async_set_time_zone("Europe/Budapest")
+    freezer.move_to(datetime(2026, 11, 23, 6, 30, tzinfo=dt_util.get_default_time_zone()))  # 05:30 UTC
+    await setup_zone(hass, temp="21.0", zone_extra={CONF_SCHEDULE: SCHEDULE_DAY_NIGHT})
+
+    assert hass.states.get(CLIMATE).attributes["temperature"] == 22.0  # Day, not Night
+    assert snap(hass)["next_change"]["at"] == "22:00"

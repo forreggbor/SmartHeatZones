@@ -2,6 +2,20 @@
 
 This is the single changelog of the project. Detailed notes of older releases are kept in [docs/release-notes](docs/release-notes/).
 
+## Version 1.14.2 (2026-11-26) – Maintenance Release
+
+| Category | Description |
+|----------|-------------|
+| Fixed    | A zone no longer switches back on at once after the overheat protection switched it off |
+| Fixed    | A boiler left on after a restart is switched off when no zone needs heat |
+| Fixed    | The schedule follows the time zone set in Home Assistant |
+
+### Fixed
+
+- **Overheat protection.** When the overheat limit was lower than the zone's target temperature, a reading over the limit switched the heating off and then straight back on. The relay and the boiler switched off and on with every reading, and the limit had no effect. A zone now never starts heating while its temperature is at or over the overheat limit, also not when another zone starts the boiler (closes #29).
+- **Boiler left on after a restart.** If the boiler switch was on when Home Assistant started but no zone needed heat (for example after a restart during heating), it stayed on until a zone started and stopped heating again. About a minute after the start, a boiler that is on with no zone needing heat is now switched off once. Switching the boiler on by hand later is still not overridden (closes #30).
+- **Schedule time zone.** The schedule and the overview's next scheduled change used the clock of the system Home Assistant runs on, while everything else used the time zone set in Home Assistant. Where the two differ, schedule periods started early or late by the difference. The schedule now always follows Home Assistant's time zone (closes #31).
+
 ## Version 1.14.1 (2026-11-26) – Maintenance Release
 
 | Category | Description |

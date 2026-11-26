@@ -55,6 +55,7 @@ class BoilerManager:
         self.hass = hass
         self._boiler_entity_id: Optional[str] = None
         self._boiler_unsub: Optional[Callable[[], None]] = None  # boiler switch state listener
+        self._startup_checked = False  # the one-time check of a boiler left on at startup has run
         self._active_zones: set[str] = set()
         self._afterheat_zones: set[str] = set()  # active zones that only joined by afterheat (no real demand)
         self._zone_entities: dict[str, "SmartHeatZoneClimate"] = {}
@@ -280,6 +281,28 @@ class BoilerManager:
                 LOG_PREFIX, self._boiler_entity_id, action, e
             )
             return False
+
+    async def check_startup_state(self) -> None:
+        """
+        Once per Home Assistant run: switch off a boiler that is on while no zone holds it.
+
+        Called from the zones' first watchdog run, when every zone has taken over its relay state.
+        A restart during heating (or a manual switch before it) can leave the switch on with no
+        demand. Later manual switching is never overridden.
+        """
+        if self._startup_checked:
+            return
+        self._startup_checked = True
+        if not self._boiler_entity_id or self._active_zones:
+            return
+        state = self.hass.states.get(self._boiler_entity_id)
+        if state is None or state.state != "on":
+            return  # off, or unavailable (handled by the state listener when it is back)
+        _LOGGER.warning(
+            "%s Boiler switch %s is ON at startup but no zone needs heat - switching it off",
+            LOG_PREFIX, self._boiler_entity_id
+        )
+        await self._call_boiler_service("turn_off")
 
     async def retry_failed(self):
         """
